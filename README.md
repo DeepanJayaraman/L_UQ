@@ -14,6 +14,13 @@ analogues of conventional moments — to:
 3. Evaluate the fitted PDF/CDF, generate random variates from it, and
    quantify divergence between distributions.
 
+A Python port with an interactive Streamlit UI is available in
+[`python/`](python/) — same method and 9 supported families, plus a
+ranked-identification view and side-by-side comparison against a
+conventional-moment (MLE) fit. See [`python/README.md`](python/README.md)
+for details, including how its outputs were validated in the absence of a
+MATLAB installation.
+
 Background and validation on statistical distributions and engineering
 case studies (sheet-metal forming, speed reducer design, probabilistic
 fatigue life) are described in:

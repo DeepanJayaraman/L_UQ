@@ -1,0 +1,23 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "lmoments-uq"
+version = "1.0.0"
+description = "L-moments based uncertainty quantification from scarce samples including extremes"
+readme = "README.md"
+requires-python = ">=3.9"
+license = { text = "MIT" }
+authors = [{ name = "Deepan Jayaraman", email = "deepanjayram@gmail.com" }]
+dependencies = [
+    "numpy>=1.24",
+    "scipy>=1.10",
+]
+
+[project.optional-dependencies]
+ui = ["streamlit>=1.30", "matplotlib>=3.7", "pandas>=2.0"]
+dev = ["pytest>=7.0"]
+
+[tool.setuptools]
+packages = ["lmoments"]
