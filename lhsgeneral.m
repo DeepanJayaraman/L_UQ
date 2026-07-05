@@ -1,7 +1,10 @@
 
 
-
-
+% THIRD-PARTY FILE: included here for reproducibility of the L-moments UQ
+% pipeline's correlated-sampling step. Authored and copyrighted by Iman
+% Moazzen (see attribution below), not by the authors of this repository.
+% It is NOT covered by this repository's MIT LICENSE; redistribute it under
+% the terms set by its original author.
 
 function correlatedSamples = lhsgeneral(pd,correlation,n)
 
