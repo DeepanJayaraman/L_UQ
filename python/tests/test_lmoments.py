@@ -109,3 +109,51 @@ def test_js_div_positive_for_different_distributions():
     p = np.array([10.0, 1.0, 1.0, 1.0])
     q = np.array([1.0, 1.0, 1.0, 10.0])
     assert js_div(p, q) > 0.1
+
+
+def test_js_div_hand_computed_value():
+    # p=[.5,.5], q=[.25,.75], m=[.375,.625]:
+    # JSD = 0.5*[.5*log2(.5/.375)+.5*log2(.5/.625)]
+    #     + 0.5*[.25*log2(.25/.375)+.75*log2(.75/.625)]
+    expected = 0.5 * (0.5 * np.log2(0.5 / 0.375) + 0.5 * np.log2(0.5 / 0.625)) \
+        + 0.5 * (0.25 * np.log2(0.25 / 0.375) + 0.75 * np.log2(0.75 / 0.625))
+    assert js_div([0.5, 0.5], [0.25, 0.75]) == pytest.approx(expected, abs=1e-14)
+
+
+def test_js_div_matches_scipy_including_zero_bins():
+    from scipy.spatial.distance import jensenshannon
+    rng = np.random.default_rng(0)
+    for _ in range(500):
+        nbins = rng.integers(2, 60)
+        p = rng.random(nbins)
+        q = rng.random(nbins)
+        p[rng.random(nbins) < 0.3] = 0.0
+        q[rng.random(nbins) < 0.3] = 0.0
+        if p.sum() == 0 or q.sum() == 0:
+            continue
+        # scipy's jensenshannon returns the JS *distance* = sqrt(JSD)
+        assert js_div(p, q) == pytest.approx(jensenshannon(p, q, base=2) ** 2, abs=1e-12)
+
+
+def test_js_div_is_symmetric_and_bounded():
+    rng = np.random.default_rng(1)
+    p = rng.random(20)
+    q = rng.random(20)
+    assert js_div(p, q) == pytest.approx(js_div(q, p), abs=1e-14)
+    assert 0.0 <= js_div(p, q) <= 1.0
+    # exactly 1 for distributions with disjoint support (log2 base)
+    assert js_div([1.0, 0.0], [0.0, 1.0]) == pytest.approx(1.0, abs=1e-14)
+
+
+def test_kl_div_nonnegative_and_inf_on_support_violation():
+    from lmoments import kl_div
+    # Gibbs' inequality: KL >= 0 always
+    rng = np.random.default_rng(2)
+    for _ in range(200):
+        p = rng.random(15) + 1e-9
+        q = rng.random(15) + 1e-9
+        assert kl_div(p, q) >= 0.0
+    # p has mass where q has none -> true KL is infinite
+    assert kl_div([0.5, 0.5], [1.0, 0.0]) == float("inf")
+    # p=0 bins contribute nothing (0*log0 = 0 convention)
+    assert kl_div([1.0, 0.0], [0.5, 0.5]) == pytest.approx(1.0, abs=1e-14)

@@ -67,6 +67,12 @@ pdf_vals = pdf_l(xgrid, result['best'], params)
 - The Gamma distribution's location shift is applied consistently in both
   `pdf_l` and `cdf_l` here; MATLAB's `CDF_l.m` omits it (see the main
   README's "Known limitations").
+- `kl_div(p, q)` returns `inf` when `p` has mass in a bin where `q` has
+  none (the mathematically correct value); MATLAB's `KLDiv.m` drops such
+  bins and can return a finite — even negative — divergence there. This
+  cannot affect `js_div`, whose mixture term is positive wherever `p` is,
+  and `js_div` was verified to machine precision against
+  `scipy.spatial.distance.jensenshannon` (see the divergence tests).
 - `weibul` is supported in `parameter_estimation`/`pdf_l`/`cdf_l`/`random_l`
   for completeness, but — matching the MATLAB version — is not one of the
   families `identify_dist` will pick automatically.

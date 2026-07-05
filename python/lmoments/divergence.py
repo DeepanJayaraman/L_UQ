@@ -14,16 +14,26 @@ import numpy as np
 
 
 def kl_div(p, q) -> float:
-    """KL divergence D(P||Q), log base 2, for two 1-D count/probability vectors."""
+    """KL divergence D(P||Q), log base 2, for two 1-D count/probability vectors.
+
+    Bins where p=0 contribute 0 (the standard 0*log(0) = 0 convention).
+    If p has mass in a bin where q has none, the true divergence is
+    infinite and this returns ``inf``. (This deliberately deviates from
+    MATLAB's KLDiv.m, which drops such bins and can return a finite --
+    even negative -- value; inside js_div the case is unreachable either
+    way, because the mixture is positive wherever p is.)
+    """
     p = np.asarray(p, dtype=float)
     q = np.asarray(q, dtype=float)
     if p.shape != q.shape:
         raise ValueError("p and q must have the same number of bins")
     p = p / p.sum()
     q = q / q.sum()
+    if np.any((p > 0) & (q == 0)):
+        return float("inf")
     with np.errstate(divide="ignore", invalid="ignore"):
         r = np.log2(p / q)
-    mask = np.isfinite(r)
+    mask = p > 0
     return float(np.sum(p[mask] * r[mask]))
 
 
