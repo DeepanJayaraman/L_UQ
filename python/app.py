@@ -98,6 +98,24 @@ with col_stats:
         {"value": [L1, L2, T3, T4]},
         index=["L1 (mean)", "L2", "T3 (L-skewness)", "T4 (L-kurtosis)"],
     ))
+    with st.expander("What are L-moments?"):
+        st.markdown(
+            """
+L-moments are summary statistics built from **linear combinations of the
+sorted sample** (order statistics), instead of squaring/cubing deviations
+like conventional moments do:
+
+- **L1** — the mean, identical to the ordinary mean.
+- **L2** — a measure of spread, playing the role of the standard deviation.
+- **T3 = L3/L2 (L-skewness)** — asymmetry, playing the role of skewness.
+- **T4 = L4/L2 (L-kurtosis)** — tail weight, playing the role of kurtosis.
+
+Because no observation is ever squared or cubed, a single extreme value
+influences L-moments far less than it influences conventional moments —
+which is exactly why they are preferred for scarce samples that contain
+extremes. (Hosking, 1990)
+            """
+        )
 
 st.subheader("Distribution identification")
 st.write(
@@ -105,6 +123,33 @@ st.write(
 )
 ranking_df = pd.DataFrame(result["ranking"][:top_k], columns=["distribution", "distance"])
 st.dataframe(ranking_df, hide_index=True)
+with st.expander("How does identification work? What does 'distance' mean?"):
+    st.markdown(
+        """
+Every distribution family occupies a characteristic place on the
+**L-moment ratio diagram**, a plot of L-kurtosis (T4) against L-skewness
+(T3):
+
+- **Two-parameter families** (uniform, normal, exponential, gumbel,
+  logistic) always have the same shape, so each is a **single point** —
+  e.g. the normal sits at (0, 0.123).
+- **Three-parameter families** (GEV, generalized Pareto, lognormal,
+  gamma) change shape with their third parameter, so each traces a
+  **curve** of possible (T3, T4) pairs.
+
+Your sample's (T3, T4) is one point on this diagram. The **distance**
+column is the Euclidean distance from that point to each family's point
+or curve — *smaller is better*. The closest family is proposed as the
+best fit, but when the top distances are nearly tied the data supports
+several families about equally; the dropdown below lets you fit any of
+them.
+
+Two known ambiguities: Gumbel is the shape=0 special case of the GEV
+curve, and Uniform is a boundary case of the generalized Pareto curve, so
+those pairs sit on top of each other on the diagram and either may rank
+first for such data.
+        """
+    )
 
 chosen_dist = st.selectbox(
     "Distribution to fit (defaults to the closest match above)",
@@ -112,8 +157,42 @@ chosen_dist = st.selectbox(
     index=0,
 )
 
+# Human-readable name for each entry of the parameter array, matching the
+# layouts produced by parameter_estimation() / consumed by pdf_l()/cdf_l().
+_PARAM_NAMES = {
+    "uniform": ["lower bound a", "upper bound b"],
+    "normal": ["mean μ", "standard deviation σ"],
+    "exponential": ["scale (mean) α"],
+    "gumbel": ["scale α", "location η"],
+    "logistic": ["location η", "scale α"],
+    "generalized extreme value": ["shape (−k, Hosking sign)", "scale α", "location η"],
+    "generalized pareto": ["shape (−k, Hosking sign)", "scale α", "location η"],
+    "lognormal": ["log-scale μ", "shape σ", "location shift η"],
+    "gamma": ["shape α", "scale β", "location shift (sample min)"],
+}
+
 param_L = parameter_estimation(x, chosen_dist, L1, L2, T3, T4)
-st.write(f"L-moment parameter estimate for **{chosen_dist}**: `{np.round(param_L, 4).tolist()}`")
+st.subheader("Parameter estimates")
+st.markdown(f"**L-moment fit of the {chosen_dist} distribution:**")
+st.table(pd.DataFrame(
+    {"estimate": np.round(param_L, 4)},
+    index=_PARAM_NAMES.get(chosen_dist, [f"parameter {i+1}" for i in range(len(param_L))]),
+))
+with st.expander("How are these parameters estimated?"):
+    st.markdown(
+        """
+Each family has **closed-form expressions relating its parameters to its
+L-moments** (Hosking & Wallis, 1997). The sample's L1, L2, T3, T4 are
+plugged directly into those expressions — no iterative optimization and
+no likelihood maximization, so the estimate exists even for very small
+samples and is not dragged around by a single extreme observation the way
+a variance-based or maximum-likelihood estimate is.
+
+Simple examples: for the normal, mean = L1 and σ = √π·L2; for the
+uniform, the bounds are L1 ∓ 3·L2. The three-parameter families use
+Hosking's rational-polynomial approximations of the same idea.
+        """
+    )
 
 lo = max(float(x.min()) - 1, 1e-6)
 hi = float(x.max()) * 1.05
@@ -153,6 +232,22 @@ axes[1].set_title(f"CDF fit: {chosen_dist}")
 axes[1].legend()
 fig.tight_layout()
 st.pyplot(fig)
+with st.expander("How to read these plots"):
+    st.markdown(
+        """
+- **Left (PDF):** the fitted probability density over the sample's
+  histogram. A good fit tracks where the histogram bars concentrate. If
+  your sample contains an extreme value, watch how each fit reacts: a
+  conventional/MLE fit often flattens and widens to "reach" the extreme,
+  while the L-moment fit stays anchored to the bulk of the data yet still
+  assigns tail probability to the extreme.
+- **Right (CDF):** the fitted cumulative distribution against the
+  empirical CDF (black staircase, which jumps by 1/n at each observed
+  value). This view weights every observation equally, so it is the
+  fairer visual test with scarce data — look for the fitted curve
+  hugging the staircase, especially in the tail region near the extreme.
+        """
+    )
 
 if show_mle_comparison and mle_params is not None:
     st.subheader("Fit-quality comparison (Jensen-Shannon divergence)")
@@ -171,6 +266,30 @@ if show_mle_comparison and mle_params is not None:
         "delta means the conventional-moment fit is more distorted by any "
         "extreme values in the sample than the L-moment fit."
     )
+    with st.expander("What is Jensen-Shannon divergence?"):
+        st.markdown(
+            """
+The Jensen-Shannon divergence (JSD) measures how different two
+probability distributions are. Here, the sample and each fitted
+distribution are binned over the same grid, and the JSD is computed
+between the empirical bin masses and the fitted ones.
+
+Properties that make it a good fit-quality score:
+
+- **Bounded 0 to 1** (with the log base 2 used here): 0 means the
+  binned distributions are identical, 1 means they share no overlap at
+  all. The two metrics above are therefore directly comparable.
+- **Symmetric**: unlike raw Kullback-Leibler divergence, it doesn't
+  matter which distribution is "reference" and which is "model".
+- **Always finite**: empty bins (common with scarce samples spread over
+  a wide range) are handled by the standard 0·log 0 = 0 convention, so
+  a sample with one far-out extreme still gets a meaningful score.
+
+This implementation was verified to machine precision against SciPy's
+independent `jensenshannon` implementation (see the repository's test
+suite for the full set of verified properties).
+            """
+        )
 
 st.divider()
 st.caption(
