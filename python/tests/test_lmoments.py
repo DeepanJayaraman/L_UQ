@@ -53,6 +53,16 @@ _DEGENERATE_ALTERNATES = {
 
 @pytest.mark.parametrize("name,rv,_", CASES, ids=[c[0] for c in CASES])
 def test_identify_dist_recovers_true_family(name, rv, _):
+    """The L-moment ratio diagram must point back to the generating family.
+
+    With n = 200,000 the sample (T3, T4) point converges to the family's
+    theoretical location on the diagram, so identification should be
+    unambiguous (up to the geometric degeneracies documented above). A
+    failure here means either the sample L-moment computation (lmom/pwm)
+    or a family's reference point/curve polynomial in identify.py is
+    wrong -- with scarce real-world samples the method has sampling noise,
+    but at this n there is no such excuse.
+    """
     x = _sample(rv)
     result = identify_dist(x)
     acceptable = _DEGENERATE_ALTERNATES.get(name, {name})
@@ -63,6 +73,20 @@ def test_identify_dist_recovers_true_family(name, rv, _):
 
 @pytest.mark.parametrize("name,rv,_", CASES, ids=[c[0] for c in CASES])
 def test_parameter_estimation_matches_true_distribution(name, rv, _):
+    """Estimated parameters must reproduce the generating distribution.
+
+    Rather than comparing parameter values directly (parameterizations
+    differ between Hosking's conventions and scipy's), this compares the
+    *fitted CDF* against the true CDF across the 1st-99th percentile
+    range. That end-to-end check catches every way the chain can go
+    wrong at once: a bad L-moment estimator, a mistranscribed
+    Hosking/Wallis formula in parameters.py, or a wrong parameter-array
+    -> scipy mapping (including shape-parameter sign flips for GEV/GP,
+    the subtlest porting hazard) in distributions.py. The 0.02 tolerance
+    absorbs residual sampling noise at n = 200,000 plus the small bias of
+    Hosking's rational-polynomial approximations (e.g. the GEV shape and
+    lognormal sigma fits), which are accurate to ~1e-3 in CDF terms.
+    """
     x = _sample(rv)
     L = lmom(x, 4)
     L1, L2, T3, T4 = L[0], L[1], L[2] / L[1], L[3] / L[1]
@@ -77,6 +101,16 @@ def test_parameter_estimation_matches_true_distribution(name, rv, _):
 
 
 def test_pdf_integrates_to_one_lognormal():
+    """A fitted PDF must integrate to ~1 over the sample's support.
+
+    Any density must have unit total mass; a violation would indicate a
+    broken parameter mapping in pdf_l (e.g. applying the 3-parameter
+    lognormal's location shift twice, or confusing scipy's s/scale with
+    Hosking's mu/sigma). Lognormal is the family chosen here because its
+    shift-and-exponentiate parameterization is the easiest to get subtly
+    wrong. Tolerance 0.02 covers the mass beyond the 99.9th-percentile
+    integration cutoff plus trapezoid-rule error.
+    """
     rv = stats.lognorm(s=0.4, loc=0.0, scale=1.0)
     x = _sample(rv)
     L = lmom(x, 4)
@@ -88,6 +122,16 @@ def test_pdf_integrates_to_one_lognormal():
 
 
 def test_random_l_matches_requested_distribution():
+    """random_l must draw from the same distribution that pdf_l/cdf_l fit.
+
+    Fit a gamma to data, then resample from the fit; the original and
+    resampled histograms should be nearly indistinguishable (JSD < 0.01,
+    where 0 is identical and 1 is disjoint). This guards the consistency
+    between random_l's parameter mapping and the estimator's -- if
+    random_l interpreted the parameter array differently (e.g. dropped
+    the gamma location shift, as MATLAB's Random_l.m nearly does with its
+    eps subtraction), samples would land in visibly different bins.
+    """
     rv = stats.gamma(a=2.0, loc=0.0, scale=1.5)
     x = _sample(rv)
     L = lmom(x, 4)
@@ -101,26 +145,57 @@ def test_random_l_matches_requested_distribution():
 
 
 def test_js_div_zero_for_identical_distributions():
+    """JSD(P, P) must be exactly 0 -- the identity-of-indiscernibles axiom.
+
+    When P == Q the mixture M equals both, every log ratio is log2(1) = 0,
+    and both KL terms vanish. A nonzero value would mean the
+    normalization or mixture computation introduces asymmetric error.
+    """
     p = np.array([1.0, 2.0, 3.0, 4.0])
     assert js_div(p, p) == pytest.approx(0.0, abs=1e-12)
 
 
 def test_js_div_positive_for_different_distributions():
+    """JSD must be strictly positive for genuinely different distributions.
+
+    Gibbs' inequality makes both KL(P||M) and KL(Q||M) nonnegative, with
+    zero only when P == Q. These two histograms concentrate mass at
+    opposite ends, so their divergence must be far from zero -- a small
+    value here would mean mass is being silently dropped (e.g. by
+    over-aggressive masking of bins).
+    """
     p = np.array([10.0, 1.0, 1.0, 1.0])
     q = np.array([1.0, 1.0, 1.0, 10.0])
     assert js_div(p, q) > 0.1
 
 
 def test_js_div_hand_computed_value():
-    # p=[.5,.5], q=[.25,.75], m=[.375,.625]:
-    # JSD = 0.5*[.5*log2(.5/.375)+.5*log2(.5/.625)]
-    #     + 0.5*[.25*log2(.25/.375)+.75*log2(.75/.625)]
+    """Pin js_div to a value derivable by hand from the definition.
+
+    For p=[.5,.5] and q=[.25,.75], the mixture is m=[.375,.625] and
+    JSD = 0.5*KL(p||m) + 0.5*KL(q||m) expands to the expression below
+    (~0.0487949). Unlike the property-based tests, this anchors the
+    *absolute scale*: it would catch a wrong log base (natural log
+    instead of log2 changes the value by a factor of ln 2), a dropped 0.5
+    factor, or a mixture computed before normalization.
+    """
     expected = 0.5 * (0.5 * np.log2(0.5 / 0.375) + 0.5 * np.log2(0.5 / 0.625)) \
         + 0.5 * (0.25 * np.log2(0.25 / 0.375) + 0.75 * np.log2(0.75 / 0.625))
     assert js_div([0.5, 0.5], [0.25, 0.75]) == pytest.approx(expected, abs=1e-14)
 
 
 def test_js_div_matches_scipy_including_zero_bins():
+    """Cross-validate js_div against scipy's independent implementation.
+
+    500 randomized histograms, with ~30% of bins zeroed in each, so the
+    comparison exercises the 0*log(0) = 0 convention and shared-zero
+    bins -- exactly the situations that arise with scarce samples binned
+    over a wide range (most bins empty, one extreme far away). Agreement
+    to 1e-12 against code we didn't write is the strongest evidence the
+    masking logic drops only the bins it mathematically should. Note
+    scipy's jensenshannon returns the JS *distance* sqrt(JSD), hence the
+    square.
+    """
     from scipy.spatial.distance import jensenshannon
     rng = np.random.default_rng(0)
     for _ in range(500):
@@ -136,6 +211,16 @@ def test_js_div_matches_scipy_including_zero_bins():
 
 
 def test_js_div_is_symmetric_and_bounded():
+    """JSD must be symmetric and, with log2, bounded in [0, 1].
+
+    Symmetry holds because the mixture M treats P and Q identically --
+    unlike raw KL, which is directional. The [0, 1] bound is specific to
+    the log2 base (JSDiv.m's header advertises exactly this range); the
+    upper bound is attained exactly when the supports are disjoint, since
+    then each distribution sees the mixture as half its own mass
+    everywhere: KL(P||M) = log2(2) = 1. The app relies on this bound when
+    presenting divergences as comparable 0-to-1 fit-quality scores.
+    """
     rng = np.random.default_rng(1)
     p = rng.random(20)
     q = rng.random(20)
@@ -146,14 +231,27 @@ def test_js_div_is_symmetric_and_bounded():
 
 
 def test_kl_div_nonnegative_and_inf_on_support_violation():
+    """Standalone kl_div must satisfy Gibbs' inequality and the inf convention.
+
+    Three requirements of the definition:
+    (1) KL(P||Q) >= 0 always, with equality iff P == Q (Gibbs'
+        inequality) -- checked over 200 random strictly-positive pairs.
+    (2) If P has mass in a bin where Q has none, KL is +inf by
+        definition. This is a regression test for a fixed bug: the
+        MATLAB-inherited bin-dropping returned a finite (even negative,
+        -0.5 for this input) divergence here.
+    (3) Bins where P = 0 contribute nothing (the 0*log(0) = 0
+        convention), regardless of Q's mass there -- for p=[1,0] vs
+        q=[.5,.5], only the first bin counts: 1*log2(1/0.5) = 1 exactly.
+    """
     from lmoments import kl_div
-    # Gibbs' inequality: KL >= 0 always
+    # (1) Gibbs' inequality: KL >= 0 always
     rng = np.random.default_rng(2)
     for _ in range(200):
         p = rng.random(15) + 1e-9
         q = rng.random(15) + 1e-9
         assert kl_div(p, q) >= 0.0
-    # p has mass where q has none -> true KL is infinite
+    # (2) p has mass where q has none -> true KL is infinite
     assert kl_div([0.5, 0.5], [1.0, 0.0]) == float("inf")
-    # p=0 bins contribute nothing (0*log0 = 0 convention)
+    # (3) p=0 bins contribute nothing (0*log0 = 0 convention)
     assert kl_div([1.0, 0.0], [0.5, 0.5]) == pytest.approx(1.0, abs=1e-14)
