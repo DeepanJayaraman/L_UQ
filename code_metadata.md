@@ -9,7 +9,7 @@ manuscript template (it goes directly under the title/author block).
 | C1 | Current code version | `v1.0.0` *(TODO: tag this version — see below)* |
 | C2 | Permanent link to code/repository used for this code version | `TODO`: e.g. `https://doi.org/10.5281/zenodo.XXXXXXX` (Zenodo archive of the `v1.0.0` tag). **Do not submit a plain `github.com/DeepanJayaraman/UQ` link** — SoftwareX requires a permanent, versioned archive because a live repo can change after acceptance. |
 | C3 | Permanent link to Reproducible Capsule | Not applicable (no Code Ocean / containerized capsule prepared) |
-| C4 | Legal Code License | MIT (this repository's original files); `lhsgeneral.m` is third-party code by Iman Moazzen, distributed under its original author's terms — see `LICENSE` |
+| C4 | Legal Code License | MIT (the previously bundled third-party `lhsgeneral.m` has been removed; the repository is now 100% MIT) |
 | C5 | Code versioning system used | git |
 | C6 | Software code languages, tools, and services used | MATLAB |
 | C7 | Compilation requirements, operating environments & dependencies | MATLAB (R2018b or later) with the Statistics and Machine Learning Toolbox; no other dependencies; platform-independent (Windows/macOS/Linux wherever MATLAB runs) |

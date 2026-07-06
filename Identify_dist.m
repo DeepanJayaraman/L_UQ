@@ -40,6 +40,13 @@ end
 % syms T3 T4 Euclidean_distance
 % T3_S, T4_S known ratio
 % T3, T4 unknown and T4 is a function of T3
+% Weibull (j=5, the 5th Coeff column below) is deliberately excluded
+% from automatic identification: its L-moment ratio curve passes
+% through/near other families' loci (shape k=1 IS the exponential
+% point; near k=3.6 it sits essentially on the normal point), so
+% including it makes identification ambiguous rather than better.
+% Weibull IS fully supported when requested explicitly by name via
+% Parameter_estimation / PDF_l / CDF_l / Random_l.
 for j =1:4  % 5 if u need to use weibul
     i = j+5;
     if i==6

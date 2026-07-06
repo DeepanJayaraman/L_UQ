@@ -255,3 +255,70 @@ def test_kl_div_nonnegative_and_inf_on_support_violation():
     assert kl_div([0.5, 0.5], [1.0, 0.0]) == float("inf")
     # (3) p=0 bins contribute nothing (0*log0 = 0 convention)
     assert kl_div([1.0, 0.0], [0.5, 0.5]) == pytest.approx(1.0, abs=1e-14)
+
+
+# ---------------------------------------------------------------------------
+# Domain-guard and ranked-fallback behavior (added alongside the JSS
+# submission preparation, after repeated-trials benchmarking showed that
+# sampling noise alone can push a small sample's L-skewness outside a
+# family's closed-form estimator domain).
+# ---------------------------------------------------------------------------
+from lmoments import fit_best, ParameterEstimationError  # noqa: E402
+
+
+def test_lognormal_negative_skew_raises_not_nan():
+    """A near-symmetric sample identified as lognormal used to produce NaN
+    parameters silently (log of a negative erf); it must now raise a
+    catchable, informative error instead."""
+    x = np.array([1.0, 2.0, 3.0, 4.0, 5.0])  # T3 = 0 exactly
+    L = lmom(x, 4)
+    L1, L2, T3, T4 = L[0], L[1], L[2] / L[1], L[3] / L[1]
+    with pytest.raises(ParameterEstimationError):
+        parameter_estimation(x, "lognormal", L1, L2, T3, T4)
+
+
+def test_degenerate_sample_raises():
+    """A constant sample has L2 = 0; every family must refuse it clearly."""
+    x = np.full(10, 3.14)
+    L = lmom(x, 4)
+    with pytest.raises(ParameterEstimationError):
+        parameter_estimation(x, "normal", L[0], L[1],
+                             np.nan, np.nan)
+
+
+def test_fit_best_falls_back_to_feasible_family():
+    """fit_best must return a valid fit even when the top-ranked family's
+    estimator domain excludes the sample, by walking down the ranking."""
+    rng = np.random.default_rng(99)
+    # Small near-symmetric samples are the documented failure mode:
+    # ~half will have slightly negative T3, and some of those land
+    # closest to the lognormal curve, whose estimator then rejects them.
+    hit_fallback = False
+    for _ in range(200):
+        x = stats.norm.rvs(size=10, random_state=rng)
+        result = fit_best(x)
+        assert np.all(np.isfinite(result["parameters"]))
+        assert result["distribution"] in dict(result["ranking"])
+        if result["skipped"]:
+            hit_fallback = True
+            assert result["rank"] > 0
+    assert hit_fallback, (
+        "expected at least one of 200 small normal samples to exercise "
+        "the ranked-fallback path; if this stops happening the guard "
+        "conditions may have changed")
+
+
+def test_fit_best_agrees_with_direct_path_when_no_fallback_needed():
+    """When the top-ranked family fits cleanly, fit_best must equal the
+    plain identify_dist + parameter_estimation composition."""
+    rng = np.random.default_rng(7)
+    x = stats.lognorm.rvs(s=0.5, size=200, random_state=rng)
+    result = fit_best(x)
+    direct = identify_dist(x)
+    assert result["distribution"] == direct["best"]
+    L1, L2, T3, T4 = direct["L_sample"]
+    np.testing.assert_allclose(
+        result["parameters"],
+        parameter_estimation(x, direct["best"], L1, L2, T3, T4))
+    assert result["skipped"] == []
+    assert result["rank"] == 0

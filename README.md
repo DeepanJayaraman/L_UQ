@@ -33,7 +33,7 @@ fatigue life) are described in:
 
 - MATLAB (developed/tested on R2018b or later)
 - Statistics and Machine Learning Toolbox (used for `pdf`, `cdf`,
-  `random`, `makedist`, `fitdist`, `icdf`, `lhsdesign`, `corr`)
+  `random`, `fitdist`)
 
 No installation is required beyond adding this folder to your MATLAB path:
 
@@ -72,7 +72,6 @@ fit on the same scarce, extreme-containing sample, and plots both.
 | `PDF_l.m` / `CDF_l.m` | Evaluate the PDF/CDF of a named distribution at given points and parameters. |
 | `Random_l.m` | Generate random variates from a named distribution and parameter set. |
 | `KLDiv.m` / `JSDiv.m` | Kullback-Leibler / Jensen-Shannon divergence between two (binned) probability distributions, used to compare fit quality. |
-| `lhsgeneral.m` | Latin Hypercube Sampling of correlated random variables (third-party, see below). |
 | `demo_example.m` | End-to-end illustrative example (see Quick start). |
 
 ### Supported distribution families
@@ -80,28 +79,31 @@ fit on the same scarce, extreme-containing sample, and plots both.
 `uniform`, `normal`, `exponential`, `gumbel`, `logistic`,
 `generalized extreme value`, `generalized pareto`, `lognormal`, `gamma`.
 
-### Known limitations
+### Weibull: supported explicitly, excluded from auto-identification
 
-- **Weibull (`weibul`) is not fully supported.** `Parameter_estimation.m`
-  contains a Weibull branch, but `Identify_dist.m` never selects it (its
-  candidate-distribution loop only spans the other 9 families), and
-  `CDF_l.m` / `Random_l.m` have no Weibull branch at all. `PDF_l.m` calls
-  an external `wblpdf3` function that is not included in this repository.
-  Treat Weibull support as incomplete until these are added.
-- `CDF_l.m`'s `gamma` branch does not apply the location-shift correction
-  that `PDF_l.m`'s `gamma` branch applies (`X - P(3)`); this is a known
-  inconsistency for shifted Gamma fits.
+The three-parameter Weibull (`weibul`) is fully supported when requested
+by name — `Parameter_estimation.m`, `PDF_l.m`, `CDF_l.m`, and
+`Random_l.m` all handle it. It is deliberately **not** among the families
+`Identify_dist.m` selects automatically: its L-moment ratio curve passes
+through or near other families' loci (shape k=1 *is* the exponential
+point; near k≈3.6 it sits essentially on the normal point), so including
+it in the automatic search makes identification ambiguous rather than
+better. This mirrors the Python port's behavior.
 
-Issues and pull requests to close these gaps are welcome.
+Issues and pull requests are welcome.
 
-## Third-party code
+## Correlated Latin Hypercube sampling (external dependency)
 
-`lhsgeneral.m` is authored by **Iman Moazzen** (2060 Project, IESVic,
-University of Victoria, BC, Canada) and is included here, with
-attribution preserved in its header, for reproducibility of the
-correlated-sampling step used elsewhere in this line of research. It is
-distributed under its original author's terms, not under this
-repository's MIT license — see the note at the end of [`LICENSE`](LICENSE).
+Earlier versions of this repository bundled `lhsgeneral.m` (correlated
+Latin Hypercube sampling) by **Iman Moazzen** (2060 Project, IESVic,
+University of Victoria, BC, Canada). It has been removed because its
+redistribution license could not be confirmed, and it is not part of
+this toolbox's core identify/estimate/evaluate pipeline. If your
+workflow needs the correlated-sampling step described in the companion
+papers, obtain it directly from the original author's MATLAB File
+Exchange entry:
+<https://www.mathworks.com/matlabcentral/fileexchange/56384-lhsgeneral-pd-correlation-n>.
+Everything remaining in this repository is under the MIT license.
 
 ## Citing this software
 

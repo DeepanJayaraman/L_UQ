@@ -49,12 +49,8 @@ if strcmp(Name,'gamma')
     %     end
 end
 if strcmp(Name,'weibul')
-    % A - Scale
-    % B - Location
-    % k - Shape
-    % Parameter = [A,k,B]
-    k = P(2);
-    A = P(1);
-    B = P(3);
-    PDF = wblpdf3(X,k,A,B);
+    % Parameter = [A,k,B]: A - scale, k - shape, B - location.
+    % (Replaces a call to an external wblpdf3 that was never bundled
+    % with this repository; the location shift below is equivalent.)
+    PDF = pdf('weibull',X-P(3),P(1),P(2));
 end

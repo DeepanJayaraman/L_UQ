@@ -7,9 +7,8 @@ parameter_estimation() in parameters.py and were verified empirically
 against scipy (see python/tests/test_lmoments.py), since no MATLAB
 installation was available while porting.
 
-Unlike the MATLAB version, the Gamma branch here applies the same
-location shift in both the PDF and the CDF (MATLAB's CDF_l.m omits the
-shift that PDF_l.m applies -- see the main README's "Known limitations").
+The Gamma branch applies the same location shift in both the PDF and
+the CDF, consistent with the (since-fixed) MATLAB CDF_l.m.
 """
 from __future__ import annotations
 

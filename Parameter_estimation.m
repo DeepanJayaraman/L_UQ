@@ -12,6 +12,22 @@
 
 function [Parameter] = Parameter_estimation(X,Distribution,L1,L2,T3,T4)
 
+% Domain guards: raise informative errors instead of silently returning
+% NaN/complex parameters when the sample's L-moments fall outside a
+% family's closed-form estimator domain. (Repeated-trials benchmarking
+% of the Python port showed sampling noise alone triggers these for a
+% nontrivial share of small samples -- most commonly a near-symmetric
+% sample identified as lognormal, whose formula needs T3 > 0.)
+if ~isfinite(L2) || L2 <= 0
+    error('UQ:ParameterEstimation:invalidL2', ...
+        'L2 must be positive and finite (got %g); degenerate sample?', L2);
+end
+if strcmp(Distribution,'lognormal') && T3 <= 0
+    error('UQ:ParameterEstimation:lognormalNegativeSkew', ...
+        ['lognormal requires positive L-skewness (got T3 = %g); this ', ...
+         'parameterization covers positively skewed samples only'], T3);
+end
+
 dist = {'uniform','normal','exponential','gumbel','logistic',...
     'generalized extreme value',...
     'generalized pareto','lognormal','gamma','weibul'};
@@ -98,6 +114,10 @@ if Position == 9   % Gamma or  Generalized Pearson type III
     Xnew = X-min(X)+eps; % start point or location
     L1 = lmom(Xnew,1); % No change in L2,L3,L4
     t = L2/L1;
+    if t <= 0 || t >= 1
+        error('UQ:ParameterEstimation:gammaLCVOutOfRange', ...
+            'gamma: L-CV of shifted sample t = %g outside (0, 1)', t);
+    end
     if t>0 && t<0.5
         z=pi*t^2;
         Alpha = (1-0.3080*z)/(z-0.05812*z^2+0.01765*z^3); % shape

@@ -33,3 +33,8 @@ if strcmp(Name,'gamma')
     Z = random (Name,P(1),P(2),m,n);
     X = Z+P(3)-eps;
 end
+if strcmp(Name,'weibul')
+    % Parameter = [A,k,B]: A - scale, k - shape, B - location.
+    Z = random('weibull',P(1),P(2),m,n);
+    X = Z+P(3);
+end

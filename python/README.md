@@ -10,7 +10,7 @@ No MATLAB installation was available while writing this port, so it was
 parameter-estimation formula and distribution-parameterization/sign
 convention was validated by generating large synthetic samples from known
 `scipy.stats` parameters and checking that this code recovers them — see
-[`tests/test_lmoments.py`](tests/test_lmoments.py) (22 tests, all passing).
+[`tests/test_lmoments.py`](tests/test_lmoments.py) (26 tests, all passing).
 If you have MATLAB available, cross-checking a few outputs against the
 original `.m` files would be a good next step.
 
@@ -65,8 +65,9 @@ pdf_vals = pdf_l(xgrid, result['best'], params)
   MATLAB version's `K` argument silently breaks for `K>1` because
   `Identify_dist.m` never actually returns more than one candidate.
 - The Gamma distribution's location shift is applied consistently in both
-  `pdf_l` and `cdf_l` here; MATLAB's `CDF_l.m` omits it (see the main
-  README's "Known limitations").
+  `pdf_l` and `cdf_l` in both implementations (MATLAB's `CDF_l.m`
+  historically omitted it; fixed as of the SoftwareX/JSS submission
+  preparation).
 - `kl_div(p, q)` returns `inf` when `p` has mass in a bin where `q` has
   none (the mathematically correct value); MATLAB's `KLDiv.m` drops such
   bins and can return a finite — even negative — divergence there. This
