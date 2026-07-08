@@ -1,5 +1,8 @@
 # L-UQ: uncertainty quantification using L-moments
 
+[![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21268119.svg)](https://doi.org/10.5281/zenodo.21268119)
+[![PyPI](https://img.shields.io/pypi/v/lmoments-uq)](https://pypi.org/project/lmoments-uq/)
+
 **L-UQ** is a MATLAB toolbox for distribution-independent uncertainty quantification
 from **scarce samples, including data with extremes/outliers**. Instead of
 assuming a distribution up front and estimating its parameters with
