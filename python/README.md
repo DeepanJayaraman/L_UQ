@@ -1,18 +1,24 @@
 # L-moments UQ — Python port
 
-A Python port of the [MATLAB UQ toolbox](../README.md) one directory up:
-distribution-independent uncertainty quantification from scarce samples,
-including data with extremes, using L-moments. Same method, same 9
-supported distribution families, plus an interactive Streamlit UI.
+A Python port of the [L-UQ MATLAB toolbox](../README.md) one directory
+up: distribution-independent uncertainty quantification from scarce
+samples, including data with extremes, using L-moments. Same method,
+same 9 supported distribution families, plus an interactive Streamlit
+UI.
 
-No MATLAB installation was available while writing this port, so it was
-**not** validated by diffing against MATLAB output. Instead, every
-parameter-estimation formula and distribution-parameterization/sign
-convention was validated by generating large synthetic samples from known
-`scipy.stats` parameters and checking that this code recovers them — see
-[`tests/test_lmoments.py`](tests/test_lmoments.py) (26 tests, all passing).
-If you have MATLAB available, cross-checking a few outputs against the
-original `.m` files would be a good next step.
+**Validation.** Every parameter-estimation formula and
+distribution-parameterization/sign convention is validated against
+known `scipy.stats` ground truth — see
+[`tests/test_lmoments.py`](tests/test_lmoments.py) (30 tests). In
+addition, this port and the MATLAB implementation have been verified
+equivalent: on fixed reference samples, MATLAB's `lmom`,
+`Parameter_estimation`, and `CDF_l` reproduce this package's
+L-moments, parameter vectors, and fitted CDF values to within 1e-8
+(run [`tests/octave_verify.m`](../tests/octave_verify.m) under GNU
+Octave, or the MATLAB suite `tests/test_uq_matlab.m` — both pass, the
+latter under MATLAB R2026a). On the same samples the package agrees
+with R's `lmom` to machine precision wherever the closed forms
+coincide.
 
 ## Install
 
