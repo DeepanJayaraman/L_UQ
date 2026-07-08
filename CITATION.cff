@@ -6,8 +6,8 @@ authors:
   - family-names: Jayaraman
     given-names: Deepan
     affiliation: "Department of Engineering Design, Indian Institute of Technology Madras"
-version: 1.0.0
-date-released: 2026-07-08
+version: 1.0.1
+date-released: 2026-07-09
 license: MIT
 repository-code: "https://github.com/DeepanJayaraman/L-UQ"
 keywords:

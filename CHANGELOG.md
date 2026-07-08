@@ -3,6 +3,21 @@
 All notable changes to L-UQ are documented here. The project follows
 [semantic versioning](https://semver.org/).
 
+## [1.0.1] — 2026-07-09
+
+Documentation-only release; no code changes.
+
+### Changed
+- `python/README.md` (the PyPI project description): replaced the
+  outdated "not validated by diffing against MATLAB output" caveat —
+  written before a MATLAB installation was available — with the
+  current verification status: MATLAB/Python equivalence to 1e-8 on
+  fixed reference samples (via `tests/octave_verify.m` under GNU
+  Octave 11.3 and `tests/test_uq_matlab.m` under MATLAB R2026a,
+  19/19), plus machine-precision agreement with R's `lmom` where the
+  closed forms coincide. Test count corrected (30), toolbox name
+  updated to L-UQ.
+
 ## [1.0.0] — 2026-07-08
 
 First stable release, prepared alongside the Journal of Statistical
