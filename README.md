@@ -2,6 +2,7 @@
 
 [![DOI](https://zenodo.org/badge/DOI/10.5281/zenodo.21268119.svg)](https://doi.org/10.5281/zenodo.21268119)
 [![PyPI](https://img.shields.io/pypi/v/lmoments-uq)](https://pypi.org/project/lmoments-uq/)
+[![View on File Exchange](https://www.mathworks.com/matlabcentral/images/matlab-file-exchange.svg)](https://www.mathworks.com/matlabcentral/fileexchange/184220-l-uq)
 
 **L-UQ** is a MATLAB toolbox for distribution-independent uncertainty quantification
 from **scarce samples, including data with extremes/outliers**. Instead of
