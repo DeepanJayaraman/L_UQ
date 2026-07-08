@@ -3,7 +3,9 @@ demo_example.m).
 
 Workflow:
   1. Draw a scarce sample (n=12) from a known distribution and inject one
-     extreme value (outlier).
+     extreme value, generated as the maximum of 1e5 draws from the same
+     parent (a genuine ~99.999th-percentile event; the extreme-generation
+     scheme of Jayaraman & Ramu 2021).
   2. Identify the best-fit distribution family from the L-moment ratio
      diagram and estimate its parameters from L-moments.
   3. Fit the same family to the data using conventional moments/MLE
@@ -46,7 +48,12 @@ def run(seed: int = 7, show: bool = True):
     n = 12
     true_mu, true_sigma = 0.0, 0.5
     x = stats.lognorm.rvs(s=true_sigma, scale=np.exp(true_mu), size=n, random_state=rng)
-    x = np.append(x, 8 * x.max())  # injected extreme (outlier)
+    # Injected extreme: the maximum of 1e5 draws from the same parent --
+    # a genuine rare event (~the population's 99.999th percentile),
+    # matching the extreme-generation scheme of Jayaraman & Ramu (2021).
+    extreme = stats.lognorm.rvs(s=true_sigma, scale=np.exp(true_mu),
+                                size=100_000, random_state=rng).max()
+    x = np.append(x, extreme)
 
     result = identify_dist(x)
     fitted_dist = result["best"]
@@ -90,7 +97,8 @@ def run(seed: int = 7, show: bool = True):
 
     fig.tight_layout()
     fig.savefig("demo_example_output.png", dpi=150)
-    print("Saved figure to demo_example_output.png")
+    fig.savefig("demo_example_output.pdf")
+    print("Saved figure to demo_example_output.png / .pdf")
 
     edges = np.linspace(lo, hi, 30)
     p_emp, _ = np.histogram(x, bins=edges)

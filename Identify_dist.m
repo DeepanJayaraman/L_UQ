@@ -26,9 +26,12 @@ L2_S = L(2);
 T3_S = L(3)/L(2);         % L - skewness
 T4_S = L(4)/L(2);         % L - kurtosis
 L_sample = [L1_S,L2_S,T3_S,T4_S];
-L_S = round([T3_S,T4_S],4);
+% round to 4 decimals; written as round(x*1e4)/1e4 (identical to
+% MATLAB's round(x,4)) so the code also runs under GNU Octave, whose
+% round() takes no digits argument.
+L_S = round([T3_S,T4_S]*1e4)/1e4;
 % L_S = [T3_S,T4_S];
-L_dist = round([L_U;L_N;L_E;L_G;L_L],4);
+L_dist = round([L_U;L_N;L_E;L_G;L_L]*1e4)/1e4;
 % L_dist = [L_U;L_N;L_E;L_G;L_L];
 % Preallocation
 D = zeros(9,1);
@@ -72,7 +75,7 @@ end
 % Minimum distance function
 function DD = dist_euc(L_S,T3,j)
 L1 = [T3; T4_fun(T3,j)];
-L1 = round(L1,4);
+L1 = round(L1*1e4)/1e4;  % Octave-compatible round(L1,4)
 Ls = L_S.*ones(length(L1),2);
 DD = min(vecnorm(L1-Ls'));
     function T4 = T4_fun(T3,j)

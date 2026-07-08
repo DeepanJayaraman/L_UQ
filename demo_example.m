@@ -30,7 +30,10 @@ rng(7);
 n = 12;
 true_mu = 0; true_sigma = 0.5;
 X = random('lognormal', true_mu, true_sigma, n, 1);
-X(end+1) = 8*max(X);   % injected extreme (outlier)
+% Injected extreme: the maximum of 1e5 draws from the same parent -- a
+% genuine rare event (~the population's 99.999th percentile), matching
+% the extreme-generation scheme of Jayaraman & Ramu (2021).
+X(end+1) = max(random('lognormal', true_mu, true_sigma, 100000, 1));
 
 %% 2. Identify distribution family and estimate parameters from L-moments
 [Distribution_type, L_sample] = Identify_dist(X);

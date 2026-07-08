@@ -1,6 +1,6 @@
-# Uncertainty quantification using L-moments
+# L-UQ: uncertainty quantification using L-moments
 
-A MATLAB toolbox for distribution-independent uncertainty quantification
+**L-UQ** is a MATLAB toolbox for distribution-independent uncertainty quantification
 from **scarce samples, including data with extremes/outliers**. Instead of
 assuming a distribution up front and estimating its parameters with
 conventional moments (which are highly sensitive to extreme values), this
@@ -121,4 +121,4 @@ noted above).
 ## Support
 
 Questions and issues: deepanjayram@gmail.com or via the
-[GitHub issue tracker](https://github.com/DeepanJayaraman/UQ/issues).
+[GitHub issue tracker](https://github.com/DeepanJayaraman/L-UQ/issues).

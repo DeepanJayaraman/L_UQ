@@ -15,6 +15,11 @@ dependencies = [
     "scipy>=1.10",
 ]
 
+[project.urls]
+Homepage = "https://github.com/DeepanJayaraman/L-UQ"
+Repository = "https://github.com/DeepanJayaraman/L-UQ"
+Changelog = "https://github.com/DeepanJayaraman/L-UQ/blob/main/CHANGELOG.md"
+
 [project.optional-dependencies]
 ui = ["streamlit>=1.30", "matplotlib>=3.7", "pandas>=2.0"]
 dev = ["pytest>=7.0"]

@@ -30,7 +30,7 @@ _MLE_DIST = {
 st.title("L-moments based Uncertainty Quantification")
 st.caption(
     "Distribution-independent UQ for scarce samples, including extremes. "
-    "Python port of [DeepanJayaraman/UQ](https://github.com/DeepanJayaraman/UQ)."
+    "Python port of [DeepanJayaraman/L-UQ](https://github.com/DeepanJayaraman/L-UQ)."
 )
 
 # ---------------------------------------------------------------- Sidebar --
@@ -64,11 +64,25 @@ else:
     st.sidebar.write("Synthetic scarce sample with one injected extreme value:")
     n = st.sidebar.slider("Sample size (n)", 5, 50, 12)
     true_sigma = st.sidebar.slider("True lognormal sigma", 0.1, 1.5, 0.5)
-    extreme_mult = st.sidebar.slider("Extreme value = extreme_mult x max(sample)", 2.0, 15.0, 8.0)
+    extreme_kind = st.sidebar.radio(
+        "Extreme type",
+        ["Population extreme (max of 1e5 parent draws)",
+         "Gross outlier (multiplier x sample max)"],
+        help="A population extreme is a genuine rare event from the same "
+             "distribution (the scheme of Jayaraman & Ramu 2021); a gross "
+             "outlier models a defect or measurement error.",
+    )
+    if extreme_kind.startswith("Gross"):
+        extreme_mult = st.sidebar.slider(
+            "Extreme value = multiplier x max(sample)", 2.0, 15.0, 8.0)
     seed = st.sidebar.number_input("Random seed", value=7, step=1)
     rng = np.random.default_rng(int(seed))
     x = stats.lognorm.rvs(s=true_sigma, scale=1.0, size=n, random_state=rng)
-    x = np.append(x, extreme_mult * x.max())
+    if extreme_kind.startswith("Gross"):
+        x = np.append(x, extreme_mult * x.max())
+    else:
+        x = np.append(x, stats.lognorm.rvs(
+            s=true_sigma, scale=1.0, size=100_000, random_state=rng).max())
 
 if x is not None:
     x = x[~np.isnan(x)]

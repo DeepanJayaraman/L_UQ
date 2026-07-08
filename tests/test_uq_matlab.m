@@ -32,9 +32,13 @@ end
 % ---------------------------------------------------------------------
 
 function test_identify_normal(testCase)
+% Normal/gamma is a third degenerate pair: the zero-skew limit of the
+% shifted gamma (Pearson III) IS the normal, so its ratio-diagram curve
+% passes through the normal point and a symmetric sample can land
+% closer to either by sampling noise alone.
 X = random('normal', 3, 2, 200000, 1);
 D = Identify_dist(X);
-verifyEqual(testCase, D{1}, 'normal');
+verifyTrue(testCase, any(strcmp(D{1}, {'normal', 'gamma'})));
 end
 
 function test_identify_exponential(testCase)
@@ -188,12 +192,38 @@ X = (1:5)';   % T3 = 0 exactly
 L = lmom(X, 4);
 verifyError(testCase, ...
     @() Parameter_estimation(X, 'lognormal', L(1), L(2), L(3)/L(2), L(4)/L(2)), ...
-    'UQ:ParameterEstimation:lognormalNegativeSkew');
+    'LUQ:ParameterEstimation:lognormalNegativeSkew');
 end
 
 function test_degenerate_sample_errors(testCase)
 X = 3.14 * ones(10, 1);
 verifyError(testCase, ...
     @() Parameter_estimation(X, 'normal', 3.14, 0, NaN, NaN), ...
-    'UQ:ParameterEstimation:invalidL2');
+    'LUQ:ParameterEstimation:invalidL2');
+end
+
+% ---------------------------------------------------------------------
+% fit_best: guarded fit with ranked fallback (MATLAB counterpart of the
+% Python fit_best; see the paper's Algorithm 1).
+% ---------------------------------------------------------------------
+
+function test_fit_best_fallback(testCase)
+% Near-symmetric sample whose nearest ratio-diagram family is lognormal
+% with (slightly) negative L-skewness: fit_best must skip lognormal and
+% return the next-ranked valid family, recording the skip.
+X = [-0.1321, 0.6404, 0.1049, -0.5357, 0.3616, 1.3040, ...
+      0.9471, -0.7037, -1.2654, -0.6233, 0.0413, -2.3250, ...
+     -0.2188, -1.2459];
+[fam, P, skipped] = fit_best(X);
+verifyNotEqual(testCase, fam, 'lognormal');
+verifyNotEmpty(testCase, P);
+verifyTrue(testCase, any(strcmp(skipped(:, 1), 'lognormal')));
+end
+
+function test_fit_best_clean_sample(testCase)
+X = random('normal', 3, 2, 5000, 1);
+[fam, P, skipped] = fit_best(X);
+verifyNotEmpty(testCase, fam);
+verifyNotEmpty(testCase, P);
+verifyEmpty(testCase, skipped);
 end

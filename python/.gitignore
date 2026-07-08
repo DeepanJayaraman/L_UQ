@@ -4,3 +4,4 @@ __pycache__/
 .pytest_cache/
 *.egg-info/
 demo_example_output.png
+demo_example_output.pdf

@@ -1,6 +1,6 @@
 """L-moments based uncertainty quantification from scarce samples including extremes.
 
-Python port of the MATLAB toolbox at https://github.com/DeepanJayaraman/UQ.
+Python port of the MATLAB toolbox at https://github.com/DeepanJayaraman/L-UQ.
 """
 from .lmoments import lmom, pwm, l_moment_ratios
 from .identify import identify_dist, DISTRIBUTIONS

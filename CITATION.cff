@@ -1,0 +1,35 @@
+cff-version: 1.2.0
+message: "If you use L-UQ, please cite it as below, together with the method paper (Jayaraman & Ramu 2021)."
+title: "L-UQ: An Open-Source MATLAB and Python Toolbox for L-Moments Based Uncertainty Quantification from Scarce Samples Including Extremes"
+type: software
+authors:
+  - family-names: Jayaraman
+    given-names: Deepan
+    affiliation: "Department of Engineering Design, Indian Institute of Technology Madras"
+version: 1.0.0
+date-released: 2026-07-08
+license: MIT
+repository-code: "https://github.com/DeepanJayaraman/L-UQ"
+keywords:
+  - L-moments
+  - uncertainty quantification
+  - scarce samples
+  - extremes
+  - distribution identification
+  - MATLAB
+  - Python
+references:
+  - type: article
+    title: "L-Moments-Based Uncertainty Quantification for Scarce Samples Including Extremes"
+    authors:
+      - family-names: Jayaraman
+        given-names: Deepan
+      - family-names: Ramu
+        given-names: Palaniappan
+    journal: "Structural and Multidisciplinary Optimization"
+    year: 2021
+    volume: 64
+    issue: 2
+    start: 505
+    end: 539
+    doi: 10.1007/s00158-021-02930-2
