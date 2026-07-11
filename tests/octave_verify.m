@@ -198,6 +198,22 @@ X = 3 + 2*randn(5000, 1);
 check(~isempty(P) && isempty(skipped), ...
       sprintf("fit_best clean sample: %s, nothing skipped", fam));
 
+%% -------------------------------------------------------------- Part G --
+printf("\n--- G. bootstrap identification ---\n");
+X = 1.0 + 0.7*log(rand(2000,1)./(1-rand(2000,1)));   % logistic
+r = Identify_dist_bootstrap(X, 400);
+check(abs(sum(r.frequencies) - 1) < 1e-9, "bootstrap frequencies sum to 1");
+check(issorted(r.frequencies, 'descend'), "bootstrap frequencies sorted descending");
+check(strcmp(r.families{1}, 'logistic') && r.frequencies(1) > 0.8 && ...
+      strcmp(r.status, 'clear'), ...
+      sprintf("bootstrap: large logistic is clear (%s %.2f)", ...
+              r.families{1}, r.frequencies(1)));
+Xs = 3 + 2*randn(12,1); Xl = 3 + 2*randn(2000,1);
+rs = Identify_dist_bootstrap(Xs, 400); rl = Identify_dist_bootstrap(Xl, 400);
+check(diff(rs.t3_ci) > 3*diff(rl.t3_ci), ...
+      sprintf("bootstrap: scarce t3 CI (%.3f) >> large (%.3f)", ...
+              diff(rs.t3_ci), diff(rl.t3_ci)));
+
 %% ----------------------------------------------------------------------
 printf("\n=== %d passed, %d failed ===\n", n_pass, n_fail);
 if n_fail > 0

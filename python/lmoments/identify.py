@@ -88,3 +88,78 @@ def identify_dist(x) -> dict:
         "ranking": ranking,
         "L_sample": [float(L1), float(L2), float(T3), float(T4)],
     }
+
+
+def identify_dist_bootstrap(x, n_boot: int = 1000, clear_frequency: float = 0.5,
+                            clear_margin: float = 0.15, random_state=None) -> dict:
+    """Uncertainty-aware distribution identification via bootstrap.
+
+    ``identify_dist`` reports a single closest family, but for scarce
+    samples the sample ratios ``(t3, t4)`` carry substantial sampling
+    uncertainty and several ratio-diagram loci lie close together, so the
+    reported "best" family may not be statistically distinguishable from
+    the runner-up. This routine resamples ``x`` with replacement
+    ``n_boot`` times, re-identifies on each resample, and summarizes how
+    often each family is selected, with percentile confidence intervals
+    for ``(t3, t4)`` and an ambiguity flag.
+
+    Returns a dict:
+      - ``best``: point-estimate closest family (``identify_dist(x)``)
+      - ``selection_frequencies``: ``[(family, frequency), ...]`` in
+        descending frequency over the bootstrap resamples
+      - ``status``: ``'clear'`` if the most-selected family is chosen in
+        at least ``clear_frequency`` of resamples *and* leads the second
+        family by at least ``clear_margin``; otherwise ``'ambiguous'``
+      - ``t3_ci``, ``t4_ci``: 95% percentile bootstrap intervals
+      - ``point_ranking``: the full ranking from ``identify_dist(x)``
+      - ``n_boot``: number of resamples that yielded a valid fit
+    """
+    x = np.asarray(x, dtype=float)
+    x = x[~np.isnan(x)]
+    n = x.size
+    if n < 4:
+        raise ValueError(f"need at least 4 observations, got {n}")
+    rng = np.random.default_rng(random_state)
+
+    point = identify_dist(x)
+
+    counts = {name: 0 for name in DISTRIBUTIONS}
+    t3s = np.empty(n_boot)
+    t4s = np.empty(n_boot)
+    valid = 0
+    for _ in range(n_boot):
+        xb = x[rng.integers(0, n, size=n)]
+        try:
+            r = identify_dist(xb)
+        except Exception:
+            continue
+        t3b, t4b = r["L_sample"][2], r["L_sample"][3]
+        if not (np.isfinite(t3b) and np.isfinite(t4b)):
+            continue
+        counts[r["best"]] += 1
+        t3s[valid] = t3b
+        t4s[valid] = t4b
+        valid += 1
+
+    if valid == 0:
+        raise ValueError("all bootstrap resamples failed to identify a family")
+    t3s = t3s[:valid]
+    t4s = t4s[:valid]
+
+    freqs = sorted(((name, counts[name] / valid) for name in DISTRIBUTIONS),
+                   key=lambda kv: kv[1], reverse=True)
+    top_freq = freqs[0][1]
+    second_freq = freqs[1][1] if len(freqs) > 1 else 0.0
+    status = ("clear" if (top_freq >= clear_frequency
+                          and top_freq - second_freq >= clear_margin)
+              else "ambiguous")
+
+    return {
+        "best": point["best"],
+        "selection_frequencies": freqs,
+        "status": status,
+        "t3_ci": (float(np.percentile(t3s, 2.5)), float(np.percentile(t3s, 97.5))),
+        "t4_ci": (float(np.percentile(t4s, 2.5)), float(np.percentile(t4s, 97.5))),
+        "point_ranking": point["ranking"],
+        "n_boot": valid,
+    }

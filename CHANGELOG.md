@@ -3,6 +3,36 @@
 All notable changes to L-UQ are documented here. The project follows
 [semantic versioning](https://semver.org/).
 
+## [1.1.0] — 2026-07-11
+
+Adds uncertainty-aware identification and a population-truth benchmark,
+in response to peer-review-style feedback on the manuscript.
+
+### Added
+- `identify_dist_bootstrap` (Python) / `Identify_dist_bootstrap.m`
+  (MATLAB): bootstrap-based, uncertainty-aware distribution
+  identification. Resamples the data with replacement, re-identifies on
+  each resample, and returns per-family selection frequencies, 95%
+  percentile confidence intervals for (t3, t4), and a clear/ambiguous
+  status flag. Addresses the fact that at small n the single "closest"
+  family is often not statistically distinguishable from the runner-up.
+- Bootstrap identification unit tests in all three suites (Python +5,
+  MATLAB +3, Octave section G).
+
+### Changed
+- The replication benchmark (`replication/run_all.py`) now scores every
+  fit against the KNOWN parent distribution (population truth) rather
+  than the small sample's own histogram: integrated absolute CDF error,
+  extreme-quantile error, and the risk-relevant tail-probability error
+  P(X > x_c) at the true 99th percentile, with Jensen-Shannon retained
+  only as a secondary diagnostic. This removes histogram-binning
+  sensitivity and the circularity of scoring a fit against the noisy
+  sample it was estimated from.
+- The benchmark additionally records identification accuracy (true
+  family ranked first / in top three, split by 2-parameter point vs
+  3-parameter curve families, and fallback rate), written to
+  `replication/output/identification_accuracy.csv`.
+
 ## [1.0.1] — 2026-07-09
 
 Documentation-only release; no code changes.

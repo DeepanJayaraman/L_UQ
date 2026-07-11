@@ -227,3 +227,35 @@ verifyNotEmpty(testCase, fam);
 verifyNotEmpty(testCase, P);
 verifyEmpty(testCase, skipped);
 end
+
+% ---------------------------------------------------------------------
+% Bootstrap identification (uncertainty-aware model selection).
+% ---------------------------------------------------------------------
+
+function test_bootstrap_frequencies_valid(testCase)
+X = random('gamma', 2, 1, 15, 1);
+r = Identify_dist_bootstrap(X, 400);
+verifyEqual(testCase, sum(r.frequencies), 1, 'AbsTol', 1e-9);
+verifyTrue(testCase, all(r.frequencies >= 0));
+verifyTrue(testCase, issorted(r.frequencies, 'descend'));
+verifyTrue(testCase, any(strcmp({'clear','ambiguous'}, r.status)));
+verifyLessThanOrEqual(testCase, r.t3_ci(1), r.t3_ci(2));
+end
+
+function test_bootstrap_large_logistic_is_clear(testCase)
+X = random('logistic', 1.0, 0.7, 2000, 1);
+r = Identify_dist_bootstrap(X, 400);
+verifyEqual(testCase, r.best, 'logistic');
+verifyEqual(testCase, r.families{1}, 'logistic');
+verifyGreaterThan(testCase, r.frequencies(1), 0.8);
+verifyEqual(testCase, r.status, 'clear');
+end
+
+function test_bootstrap_scarce_wider_ci_than_large(testCase)
+Xs = random('gamma', 2, 1, 12, 1);
+Xl = random('gamma', 2, 1, 2000, 1);
+rs = Identify_dist_bootstrap(Xs, 400);
+rl = Identify_dist_bootstrap(Xl, 400);
+verifyGreaterThan(testCase, diff(rs.t3_ci), 3 * diff(rl.t3_ci));
+verifyGreaterThan(testCase, diff(rs.t4_ci), 3 * diff(rl.t4_ci));
+end

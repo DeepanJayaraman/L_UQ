@@ -14,7 +14,8 @@ import pytest
 from scipy import stats
 
 from lmoments import (
-    identify_dist, parameter_estimation, pdf_l, cdf_l, random_l, js_div, lmom,
+    identify_dist, identify_dist_bootstrap, parameter_estimation,
+    pdf_l, cdf_l, random_l, js_div, lmom,
 )
 
 N = 200_000
@@ -322,3 +323,71 @@ def test_fit_best_agrees_with_direct_path_when_no_fallback_needed():
         parameter_estimation(x, direct["best"], L1, L2, T3, T4))
     assert result["skipped"] == []
     assert result["rank"] == 0
+
+
+# ---------------------------------------------------------------------
+# Bootstrap identification (uncertainty-aware model selection).
+# ---------------------------------------------------------------------
+
+def test_bootstrap_frequencies_are_a_valid_distribution():
+    """Selection frequencies must be nonnegative, sum to one, be sorted
+    descending, and the point 'best' must be reported."""
+    rng = np.random.default_rng(3)
+    x = stats.lognorm.rvs(s=0.5, size=15, random_state=rng)
+    r = identify_dist_bootstrap(x, n_boot=500, random_state=0)
+    freqs = [f for _, f in r["selection_frequencies"]]
+    assert all(f >= 0 for f in freqs)
+    assert abs(sum(freqs) - 1.0) < 1e-9
+    assert freqs == sorted(freqs, reverse=True)
+    assert r["best"] in dict(r["point_ranking"])
+    assert r["status"] in ("clear", "ambiguous")
+    assert r["t3_ci"][0] <= r["t3_ci"][1]
+    assert r["t4_ci"][0] <= r["t4_ci"][1]
+
+
+def test_bootstrap_large_clean_sample_is_clear():
+    """A large sample from a family with a distinctive, isolated
+    ratio-diagram position (logistic) should be identified with high,
+    clear bootstrap frequency."""
+    rng = np.random.default_rng(1)
+    x = stats.logistic.rvs(loc=1.0, scale=0.7, size=2000, random_state=rng)
+    r = identify_dist_bootstrap(x, n_boot=500, random_state=0)
+    assert r["best"] == "logistic"
+    top_family, top_freq = r["selection_frequencies"][0]
+    assert top_family == "logistic"
+    assert top_freq > 0.8
+    assert r["status"] == "clear"
+
+
+def test_bootstrap_scarce_sample_has_wider_ci_than_large():
+    """Sampling uncertainty in (t3, t4) must shrink with n: the bootstrap
+    confidence intervals for a scarce sample must be substantially wider
+    than for a large sample from the same parent. This is the core
+    statistical content the bootstrap exposes."""
+    parent = stats.gamma(a=2.0)
+    xs = parent.rvs(size=12, random_state=np.random.default_rng(5))
+    xl = parent.rvs(size=2000, random_state=np.random.default_rng(5))
+    rs = identify_dist_bootstrap(xs, n_boot=500, random_state=0)
+    rl = identify_dist_bootstrap(xl, n_boot=500, random_state=0)
+    width = lambda ci: ci[1] - ci[0]
+    assert width(rs["t3_ci"]) > 3 * width(rl["t3_ci"])
+    assert width(rs["t4_ci"]) > 3 * width(rl["t4_ci"])
+
+
+def test_bootstrap_ambiguity_flag_fires_on_scarce_extreme_sample():
+    """The scarce lognormal-plus-genuine-extreme sample of the paper's
+    worked example is identified as GEV by the point estimate, but the
+    bootstrap must reveal that choice is not clear-cut (ambiguous)."""
+    rng = np.random.default_rng(7)
+    x = stats.lognorm.rvs(s=0.5, scale=1.0, size=12, random_state=rng)
+    x = np.append(x, stats.lognorm.rvs(
+        s=0.5, scale=1.0, size=100_000, random_state=rng).max())
+    r = identify_dist_bootstrap(x, n_boot=500, random_state=0)
+    assert r["best"] == "generalized extreme value"
+    assert r["status"] == "ambiguous"
+    assert r["selection_frequencies"][0][1] < 0.6
+
+
+def test_bootstrap_rejects_too_few_observations():
+    with pytest.raises(ValueError):
+        identify_dist_bootstrap([1.0, 2.0, 3.0], n_boot=100)
