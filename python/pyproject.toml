@@ -10,8 +10,11 @@ readme = "README.md"
 requires-python = ">=3.9"
 license = { text = "MIT" }
 authors = [
-    { name = "Deepan Jayaraman", email = "deepanjayram@gmail.com" },
+    { name = "Deepan Jayaraman" },
     { name = "Palaniappan Ramu" },
+]
+maintainers = [
+    { name = "Deepan Jayaraman", email = "deepanjayram@gmail.com" },
 ]
 dependencies = [
     "numpy>=1.24",
