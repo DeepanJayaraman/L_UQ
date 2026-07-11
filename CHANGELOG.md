@@ -3,6 +3,23 @@
 All notable changes to L-UQ are documented here. The project follows
 [semantic versioning](https://semver.org/).
 
+## [1.2.0] — 2026-07-11
+
+### Changed (breaking)
+- **Python import namespace renamed `lmoments` → `lmoments_uq`** to
+  avoid collision with the unrelated `lmoments` and `lmoments3`
+  packages already on PyPI, which also install a top-level `lmoments`
+  module. The PyPI distribution name is unchanged (`lmoments-uq`); only
+  the import changes: `from lmoments_uq import ...`. Update any code
+  that did `from lmoments import ...`. Repository (L-UQ), distribution
+  (lmoments-uq), import (lmoments_uq), and article all now align.
+- Added Palaniappan Ramu as a second author in the package metadata
+  (`pyproject.toml`, `CITATION.cff`), matching the article.
+
+(Contains all 1.1.0 changes below; 1.1.0 was released on GitHub but
+not published to PyPI, so 1.2.0 is the first PyPI release carrying the
+bootstrap identification and population-truth benchmark.)
+
 ## [1.1.0] — 2026-07-11
 
 Adds uncertainty-aware identification and a population-truth benchmark,

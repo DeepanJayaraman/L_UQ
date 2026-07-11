@@ -13,7 +13,7 @@ import numpy as np
 import pytest
 from scipy import stats
 
-from lmoments import (
+from lmoments_uq import (
     identify_dist, identify_dist_bootstrap, parameter_estimation,
     pdf_l, cdf_l, random_l, js_div, lmom,
 )
@@ -245,7 +245,7 @@ def test_kl_div_nonnegative_and_inf_on_support_violation():
         convention), regardless of Q's mass there -- for p=[1,0] vs
         q=[.5,.5], only the first bin counts: 1*log2(1/0.5) = 1 exactly.
     """
-    from lmoments import kl_div
+    from lmoments_uq import kl_div
     # (1) Gibbs' inequality: KL >= 0 always
     rng = np.random.default_rng(2)
     for _ in range(200):
@@ -264,7 +264,7 @@ def test_kl_div_nonnegative_and_inf_on_support_violation():
 # sampling noise alone can push a small sample's L-skewness outside a
 # family's closed-form estimator domain).
 # ---------------------------------------------------------------------------
-from lmoments import fit_best, ParameterEstimationError  # noqa: E402
+from lmoments_uq import fit_best, ParameterEstimationError  # noqa: E402
 
 
 def test_lognormal_negative_skew_raises_not_nan():

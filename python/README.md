@@ -52,14 +52,27 @@ to fit, and view the PDF/CDF fit against the sample compared with a
 conventional-moment (MLE) fit of the same family, plus Jensen-Shannon
 divergence numbers quantifying the difference.
 
+## Install
+
+```bash
+pip install lmoments-uq          # distribution name (hyphen)
+```
+
+The import namespace is `lmoments_uq` (underscore), distinct from the
+unrelated `lmoments` / `lmoments3` packages on PyPI.
+
 ## API
 
 ```python
-from lmoments import identify_dist, parameter_estimation, pdf_l, cdf_l, random_l, js_div
+from lmoments_uq import identify_dist, parameter_estimation, pdf_l, cdf_l, random_l, js_div
 
 result = identify_dist(x)              # {'best', 'ranking', 'L_sample'}
 params = parameter_estimation(x, result['best'], *result['L_sample'])
 pdf_vals = pdf_l(xgrid, result['best'], params)
+
+# uncertainty-aware identification (bootstrap selection frequencies)
+from lmoments_uq import identify_dist_bootstrap
+boot = identify_dist_bootstrap(x)      # {'best','selection_frequencies','status',...}
 ```
 
 ## Differences from the MATLAB version

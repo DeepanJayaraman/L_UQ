@@ -11,7 +11,7 @@ import matplotlib.pyplot as plt
 import streamlit as st
 from scipy import stats
 
-from lmoments import identify_dist, parameter_estimation, pdf_l, cdf_l, js_div
+from lmoments_uq import identify_dist, parameter_estimation, pdf_l, cdf_l, js_div
 
 st.set_page_config(page_title="L-moments UQ", layout="wide")
 

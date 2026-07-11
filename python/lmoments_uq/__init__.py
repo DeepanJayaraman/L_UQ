@@ -18,4 +18,4 @@ __all__ = [
     "kl_div", "js_div",
 ]
 
-__version__ = "1.1.0"
+__version__ = "1.2.0"

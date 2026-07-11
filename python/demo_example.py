@@ -23,7 +23,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-from lmoments import identify_dist, parameter_estimation, pdf_l, cdf_l, js_div
+from lmoments_uq import identify_dist, parameter_estimation, pdf_l, cdf_l, js_div
 
 # MATLAB name -> scipy.stats distribution used for the conventional/MLE fit.
 # (MATLAB's 'ExtremeValue' models the smallest-extreme/min case, opposite of
