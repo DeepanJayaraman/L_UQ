@@ -11,6 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from .lmoments import lmom
+from .results import BootstrapIdentification, IdentificationResult, LMoments
 
 DISTRIBUTIONS = [
     "uniform", "normal", "exponential", "gumbel", "logistic",
@@ -61,15 +62,18 @@ def _closest_on_curve(t3_s: float, t4_s: float, col: int, t3_range: tuple) -> fl
     return float(np.min(np.hypot(t3_grid - t3_s, t4_grid - t4_s)))
 
 
-def identify_dist(x) -> dict:
+def identify_dist(x) -> IdentificationResult:
     """Identify the closest-matching distribution family for sample x.
 
-    Returns a dict with keys:
-      - 'best': name of the closest-matching family (str)
-      - 'ranking': all 9 families as (name, distance) sorted ascending --
+    Returns an :class:`~lmoments_uq.results.IdentificationResult` with:
+      - ``best``: name of the closest-matching family (str)
+      - ``ranking``: all 9 families as (name, distance) sorted ascending --
         an addition over the MATLAB version, which only ever returns the
         single closest match
-      - 'L_sample': [L1, L2, T3, T4]
+      - ``l_moments``: the sample's (L1, L2, t3, t4)
+
+    The legacy mapping access (``result["best"]``, ``result["L_sample"]``)
+    is still supported.
     """
     L = lmom(x, 4)
     L1, L2, L3, L4 = L
@@ -83,15 +87,17 @@ def identify_dist(x) -> dict:
         distances[name] = _closest_on_curve(T3, T4, col, _CURVE_T3_RANGE[name])
 
     ranking = sorted(distances.items(), key=lambda kv: kv[1])
-    return {
-        "best": ranking[0][0],
-        "ranking": ranking,
-        "L_sample": [float(L1), float(L2), float(T3), float(T4)],
-    }
+    return IdentificationResult(
+        best=ranking[0][0],
+        ranking=ranking,
+        l_moments=LMoments(L1, L2, T3, T4),
+        data=x,
+    )
 
 
 def identify_dist_bootstrap(x, n_boot: int = 1000, clear_frequency: float = 0.5,
-                            clear_margin: float = 0.15, random_state=None) -> dict:
+                            clear_margin: float = 0.15,
+                            random_state=None) -> BootstrapIdentification:
     """Uncertainty-aware distribution identification via bootstrap.
 
     ``identify_dist`` reports a single closest family, but for scarce
@@ -103,7 +109,7 @@ def identify_dist_bootstrap(x, n_boot: int = 1000, clear_frequency: float = 0.5,
     often each family is selected, with percentile confidence intervals
     for ``(t3, t4)`` and an ambiguity flag.
 
-    Returns a dict:
+    Returns a :class:`~lmoments_uq.results.BootstrapIdentification` with:
       - ``best``: point-estimate closest family (``identify_dist(x)``)
       - ``selection_frequencies``: ``[(family, frequency), ...]`` in
         descending frequency over the bootstrap resamples
@@ -113,6 +119,12 @@ def identify_dist_bootstrap(x, n_boot: int = 1000, clear_frequency: float = 0.5,
       - ``t3_ci``, ``t4_ci``: 95% percentile bootstrap intervals
       - ``point_ranking``: the full ranking from ``identify_dist(x)``
       - ``n_boot``: number of resamples that yielded a valid fit
+      - ``t3_samples``, ``t4_samples``: the resampled ratios themselves,
+        so the bootstrap cloud can be replotted without rerunning
+
+    ``result.plot()`` draws the cloud and the selection frequencies;
+    ``result.summary()`` prints the same information as text. The legacy
+    mapping access (``result["status"]``) is still supported.
     """
     x = np.asarray(x, dtype=float)
     x = x[~np.isnan(x)]
@@ -133,10 +145,10 @@ def identify_dist_bootstrap(x, n_boot: int = 1000, clear_frequency: float = 0.5,
             r = identify_dist(xb)
         except Exception:
             continue
-        t3b, t4b = r["L_sample"][2], r["L_sample"][3]
+        t3b, t4b = r.l_moments.t3, r.l_moments.t4
         if not (np.isfinite(t3b) and np.isfinite(t4b)):
             continue
-        counts[r["best"]] += 1
+        counts[r.best] += 1
         t3s[valid] = t3b
         t4s[valid] = t4b
         valid += 1
@@ -154,12 +166,14 @@ def identify_dist_bootstrap(x, n_boot: int = 1000, clear_frequency: float = 0.5,
                           and top_freq - second_freq >= clear_margin)
               else "ambiguous")
 
-    return {
-        "best": point["best"],
-        "selection_frequencies": freqs,
-        "status": status,
-        "t3_ci": (float(np.percentile(t3s, 2.5)), float(np.percentile(t3s, 97.5))),
-        "t4_ci": (float(np.percentile(t4s, 2.5)), float(np.percentile(t4s, 97.5))),
-        "point_ranking": point["ranking"],
-        "n_boot": valid,
-    }
+    return BootstrapIdentification(
+        best=point.best,
+        selection_frequencies=freqs,
+        status=status,
+        t3_ci=(float(np.percentile(t3s, 2.5)), float(np.percentile(t3s, 97.5))),
+        t4_ci=(float(np.percentile(t4s, 2.5)), float(np.percentile(t4s, 97.5))),
+        point_ranking=point.ranking,
+        n_boot=valid,
+        t3_samples=t3s,
+        t4_samples=t4s,
+    )

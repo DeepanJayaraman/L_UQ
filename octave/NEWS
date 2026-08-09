@@ -1,0 +1,51 @@
+Summary of important user-visible changes for l-uq
+==================================================
+
+l-uq 2.0.0
+----------
+
+ ** First release packaged for GNU Octave. The package installs with
+    `pkg install l-uq-2.0.0.tar.gz` and needs no other packages: the
+    Statistics toolbox / statistics package dependency has been removed
+    throughout (see below).
+
+ ** PDF_l, CDF_l and Random_l no longer call MATLAB's name-dispatching
+    pdf/cdf/random. All ten families are now written out in closed form
+    in the new luq_dist, on top of functions core to both MATLAB and
+    Octave (erf, erfinv, gamma, gammainc, gammaincinv). Parameter
+    layouts, location shifts and numerical results are unchanged.
+
+ ** Random_l now generates variates by inverse transform sampling. The
+    distribution sampled is unchanged, but the exact stream of variates
+    differs from the previous random()-based implementation for a given
+    seed.
+
+ ** Parameter_estimation uses erfinv in place of norminv, and
+    Identify_dist_bootstrap uses the new luq_percentile in place of
+    prctile. luq_percentile follows numpy.percentile's linear
+    interpolation convention rather than prctile's, so that the
+    bootstrap intervals reported by the MATLAB, Octave and Python
+    implementations agree.
+
+ ** New KSStat: the Kolmogorov-Smirnov statistic between a fitted family
+    and a raw sample. Unlike JSDiv it requires no binning, so it can
+    confirm that a divergence comparison is not an artifact of the bins.
+
+ ** parameter_identify is fixed. Identify_dist only ever returns the
+    single closest family, so the previous implementation raised an
+    index-out-of-bounds error for any K > 1, and for K = 1 passed a 1x1
+    cell rather than a char to Parameter_estimation. It now walks the
+    ratio-diagram ranking and returns the top K feasible candidates, in
+    step with the Python implementation. The output arguments have
+    changed: [Distribution_type, Parameter, D_sorted, L_sample, skipped].
+
+ ** New demo_octave: a walkthrough that runs in both Octave and MATLAB
+    with no extra packages, exercising lmom, Identify_dist, fit_best,
+    parameter_identify, Identify_dist_bootstrap, PDF_l, CDF_l, Random_l,
+    JSDiv, KLDiv and KSStat. The MATLAB-only demo_example, which
+    compares against fitdist, is not part of the Octave package.
+
+ ** JSDiv and KLDiv accept a fit and a raw sample directly --
+    JSDiv(Name, Parameter, Data) -- and bin internally, instead of
+    requiring the caller to construct matching histograms by hand. The
+    two-vector form JSDiv(P, Q) is unchanged.

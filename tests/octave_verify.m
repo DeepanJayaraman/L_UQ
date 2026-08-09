@@ -2,9 +2,9 @@
 %
 % MATLAB's unittest framework (functiontests/localfunctions, used by
 % test_uq_matlab.m) is not available in GNU Octave, so this script
-% re-implements the same coverage as a plain script that runs under
-% Octave with the statistics package. It exercises the *actual* .m
-% sources shipped in this repository:
+% re-implements the same coverage as a plain script that runs under a
+% bare Octave installation -- no packages required. It exercises the
+% *actual* .m sources shipped in this repository:
 %
 %   A. Machine-precision equivalence against the Python implementation
 %      on the 7 fixed reference cases in JSS/comparison/reference_cases
@@ -43,12 +43,21 @@ end
 global n_pass n_fail failures
 n_pass = 0; n_fail = 0; failures = {};
 
-pkg load statistics
+% No `pkg load statistics` here: since version 2.0.0 the toolbox depends
+% only on functions core to both MATLAB and Octave. If any of these
+% checks starts failing with "'xyz' undefined", a Statistics-toolbox call
+% has crept back into the sources.
 here = fileparts(mfilename('fullpath'));
 addpath(fullfile(here, '..'));          % the toolbox .m files
-refdir = fullfile(here, '..', '..', 'JSS', 'comparison', 'reference_cases');
+% Reference cases ship with the repository so that this check runs from a
+% bare clone. The sibling path is kept as a fallback for the development
+% tree, where the cases are generated.
+refdir = fullfile(here, 'reference_cases');
+if ~exist(refdir, 'dir')
+  refdir = fullfile(here, '..', '..', 'JSS', 'comparison', 'reference_cases');
+end
 
-printf("Octave %s, statistics package loaded\n\n", OCTAVE_VERSION);
+printf("Octave %s, no external packages loaded\n\n", OCTAVE_VERSION);
 
 %% -------------------------------------------------------------- Part A --
 printf("--- A. Equivalence vs. Python reference cases ---\n");
@@ -213,6 +222,86 @@ rs = Identify_dist_bootstrap(Xs, 400); rl = Identify_dist_bootstrap(Xl, 400);
 check(diff(rs.t3_ci) > 3*diff(rl.t3_ci), ...
       sprintf("bootstrap: scarce t3 CI (%.3f) >> large (%.3f)", ...
               diff(rs.t3_ci), diff(rl.t3_ci)));
+
+%% -------------------------------------------------------------- Part H --
+printf("\n--- H. Fit-aware divergences, KS statistic, percentile ---\n");
+
+% A scarce fit scored against a large reference sample, the way the
+% worked examples do it. JSDiv/KLDiv/KSStat take the fit and the raw
+% sample directly; no histogram is built by hand.
+rand('state', 4242); randn('state', 4242);
+Xref = 3 + 2*randn(20000, 1);
+Xsc  = 3 + 2*randn(25, 1);
+[famH, PH] = fit_best(Xsc);
+
+jd = JSDiv(famH, PH, Xref);
+kd = KLDiv(famH, PH, Xref);
+ks = KSStat(famH, PH, Xref);
+check(isscalar(jd) && jd >= 0 && jd <= 1, ...
+      sprintf("JSDiv(fit, data) in [0,1] (%.4f)", jd));
+check(isscalar(kd) && isfinite(kd) && kd >= 0, ...
+      sprintf("KLDiv(fit, data) finite and non-negative (%.4f)", kd));
+check(isscalar(ks) && ks >= 0 && ks <= 1, ...
+      sprintf("KSStat(fit, data) in [0,1] (%.4f)", ks));
+
+% A fit of the right family against its own parent should beat a
+% deliberately wrong one on both measures.
+jd_wrong = JSDiv('exponential', [8.0], Xref);
+ks_wrong = KSStat('exponential', [8.0], Xref);
+check(jd < jd_wrong, ...
+      sprintf("JSDiv prefers the fitted family (%.4f < %.4f)", jd, jd_wrong));
+check(ks < ks_wrong, ...
+      sprintf("KSStat prefers the fitted family (%.4f < %.4f)", ks, ks_wrong));
+
+% The two-vector form must still work and agree with the manual binning
+% the fit-and-data form performs internally.
+[Pfit, Pdata] = luq_bin_fit(famH, PH, Xref, 39);
+check(abs(JSDiv(Pdata, Pfit) - jd) < 1e-12, ...
+      "JSDiv(fit, data) equals JSDiv on the same bins");
+
+% KS statistic against the exact CDF of the sampled family is small for
+% a large sample, and exactly zero-ish for a perfect match.
+ks_exact = KSStat('normal', [3, 2], Xref);
+check(ks_exact < 0.02, ...
+      sprintf("KSStat of the true parent on n=20000 is small (%.4f)", ks_exact));
+
+% luq_percentile against a known answer: for 1:100 the linear-
+% interpolation convention puts the 50th percentile at 50.5.
+check(abs(luq_percentile(1:100, 50) - 50.5) < 1e-12, ...
+      "luq_percentile(1:100, 50) = 50.5");
+check(abs(luq_percentile(1:100, 0) - 1) < 1e-12 && ...
+      abs(luq_percentile(1:100, 100) - 100) < 1e-12, ...
+      "luq_percentile endpoints exact");
+
+% luq_dist: CDF monotone, PDF non-negative, and inv the inverse of cdf,
+% across every supported family.
+fams = {'uniform', 'normal', 'exponential', 'gumbel', 'logistic', ...
+        'generalized extreme value', 'generalized pareto', ...
+        'lognormal', 'gamma', 'weibul'};
+pars = {[0.5 4], [3 2], [2.5], [1.7 4], [1 0.8], ...
+        [0.25 1.5 3], [0.3 2 1], [0.4 0.7 2], [2.5 1.3 1], [3 1.8 0.5]};
+qq = 0.05:0.05:0.95;
+all_ok = true;
+for fi = 1:numel(fams)
+  xq = luq_dist('inv', fams{fi}, pars{fi}, qq);
+  cq = luq_dist('cdf', fams{fi}, pars{fi}, xq);
+  dq = luq_dist('pdf', fams{fi}, pars{fi}, xq);
+  ok = all(isfinite(xq)) && all(abs(cq - qq) < 1e-8) && all(dq >= 0);
+  if ~ok
+    printf("      round-trip failed for %s\n", fams{fi});
+    all_ok = false;
+  end
+end
+check(all_ok, "luq_dist: cdf(inv(q)) = q and pdf >= 0 for all 10 families");
+
+% parameter_identify returns K feasible candidates, closest first, and
+% its first candidate agrees with fit_best.
+[names_k, pars_k, d_k] = parameter_identify(Xsc, 3);
+check(numel(names_k) == 3 && numel(pars_k) == 3 && numel(d_k) == 3, ...
+      "parameter_identify returns K candidates");
+check(issorted(d_k), "parameter_identify candidates ordered by distance");
+check(strcmp(names_k{1}, famH), ...
+      sprintf("parameter_identify(X,1) agrees with fit_best (%s)", names_k{1}));
 
 %% ----------------------------------------------------------------------
 printf("\n=== %d passed, %d failed ===\n", n_pass, n_fail);

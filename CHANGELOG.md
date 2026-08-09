@@ -3,6 +3,116 @@
 All notable changes to L-UQ are documented here. The project follows
 [semantic versioning](https://semver.org/).
 
+## [2.0.0] — 2026-08-07
+
+Addresses the software and replication issues raised in the *Journal of
+Statistical Software* editorial assessment: the dict-based Python API,
+the missing replication dependencies and directory-creation crash, the
+multi-script replication layout, the absence of an Octave package, and
+the awkwardness of scoring a fit against data.
+
+### Added
+
+- **Result objects.** `fit_best` returns an `LMomentFit` with documented
+  attributes (`.distribution`, `.parameters`, `.parameters_dict`,
+  `.l_moments`, `.rank`, `.used_fallback`, `.skipped`, `.ranking`) and
+  methods: `.pdf/.cdf/.sf/.ppf/.rvs/.interval/.frozen()` to evaluate the
+  fitted distribution, `.js_div/.kl_div/.ks_stat/.ks_test()` to score it,
+  `.summary()` to print it and `.plot()` to draw it. `identify_dist`,
+  `identify_dist_bootstrap` and `parameter_identify` likewise return
+  `IdentificationResult`, `BootstrapIdentification` and `CandidateFits`.
+  All of them keep the 1.x mapping access (`fit["distribution"]`), so
+  existing code and replication scripts run unchanged.
+- **Kolmogorov-Smirnov statistic**: `ks_stat`/`ks_test` in Python,
+  `KSStat.m` in MATLAB/Octave. Binning-free, so it can confirm that a
+  Jensen-Shannon comparison is not an artifact of the chosen bins.
+- **Octave package** under `octave/`, built from the shared `.m` sources
+  by `octave/build_octave_package.py`. Installs with
+  `pkg install l-uq-2.0.0.tar.gz`.
+- `luq_dist.m`: closed-form PDF/CDF/inverse-CDF for all ten families,
+  verified against `scipy.stats` to machine precision (worst discrepancy
+  3.4e-16) before transcription.
+- `demo_octave.m`: a walkthrough that runs in both MATLAB and Octave with
+  no extra packages, exercising twelve toolbox functions rather than two.
+- 28 new Python tests in `tests/test_results_api.py`, and a new Part H in
+  `tests/octave_verify.m`.
+
+### Verified
+
+- 63 Python tests pass.
+- All 55 checks in `tests/octave_verify.m` pass under **GNU Octave
+  11.3.0 with no packages loaded**, including the machine-precision
+  equivalence against the stored Python reference cases.
+- The Octave package installs (`pkg install l-uq-2.0.0.tar.gz`), loads,
+  and runs the full pipeline in a session where `norminv`, `normcdf`,
+  `gevcdf`, `gppdf`, `wblpdf` and `fitdist` are all undefined.
+- Octave and Python agree exactly on the Challenger worked example:
+  same family (`gamma`, after skipping `lognormal`), same parameters
+  `[5.24692, 3.15713, 53]`, same `P(T <= 31 F)`, same KS statistic
+  (0.1929) and JS divergence (0.4220). `luq_percentile` reproduces
+  `numpy.percentile` exactly (`[1, 25.75, 50.5, 100]` on `1:100`).
+- Bootstrap intervals differ slightly between the two, as expected: the
+  RNG streams are not shared across languages.
+
+### Changed
+
+- **No toolbox or package dependency.** `PDF_l`/`CDF_l`/`Random_l` no
+  longer call MATLAB's name-dispatching `pdf`/`cdf`/`random`;
+  `Parameter_estimation` uses `erfinv` instead of `norminv`;
+  `Identify_dist_bootstrap` uses the new `luq_percentile` instead of
+  `prctile`; `Identify_dist` no longer uses `vecnorm`. The toolbox now
+  runs on a bare MATLAB or Octave installation.
+- **`js_div`/`kl_div` accept a fit and a raw sample** in either order,
+  binning internally — `js_div(fit, x_full)`, `fit.js_div(x_full)`, and
+  `JSDiv(Distribution, Parameter, X)` in MATLAB. The two-vector form is
+  unchanged, and the internal binning reproduces the manual binning
+  callers previously wrote by hand, bit for bit, so no published number
+  moves.
+- `parameter_identify` now walks the ranking and returns the top `k`
+  *feasible* candidates, recording any it skipped, instead of raising
+  when a candidate's estimator domain excludes the sample. Pass
+  `strict=True` for the old raising behaviour.
+- `luq_percentile` follows numpy's linear-interpolation convention rather
+  than `prctile`'s, so MATLAB, Octave and Python report the same
+  bootstrap intervals.
+
+### Fixed
+
+- **MATLAB `parameter_identify` was broken.** `Identify_dist` only ever
+  returns the single closest family, so any call with `K > 1` raised an
+  index-out-of-bounds error, and `K = 1` passed a 1x1 cell rather than a
+  char to `Parameter_estimation`. Its output arguments are now
+  `[Distribution_type, Parameter, D_sorted, L_sample, skipped]`.
+- Replication material: added `replication/requirements.txt` (`pandas`
+  and `matplotlib` were undeclared), and fixed the `FIG_DIR.mkdir()`
+  call that raised `FileNotFoundError` on a fresh unpack because the
+  parent `paper/` directory did not exist.
+
+### Replication material
+
+- The three scripts are replaced by a single `replication/replication.py`,
+  as the JSS instructions to authors require, written as a flat sequence
+  of numbered sections with no analysis code inside functions so it can
+  be stepped through interactively. It reproduces the previous results
+  exactly — bit-identical win-rate percentages and L-moment error
+  columns, worked examples agreeing to ~15 significant figures. The one
+  number that moved is the fatigue B10 life for the L-moment fit
+  (105.729 → 105.697 kcycles), now taken from the fitted quantile
+  function instead of a 4000-point grid search.
+- Section 1 is a guided tour on real data that prints each command and
+  its output, for reproduction in the article.
+- The superseded scripts are kept under `replication/legacy/`.
+
+### Migration from 1.x
+
+Python code that used the dict API keeps working. To adopt the new API,
+replace `fit["distribution"]` with `fit.distribution` and manual binning
+with `fit.js_div(x)`. MATLAB code calling `parameter_identify` must be
+updated to the new output arguments; MATLAB code relying on `Random_l`
+reproducing a particular stream for a given seed will get a different
+(equally valid) stream, since variates now come from inverse transform
+sampling.
+
 ## [1.2.0] — 2026-07-11
 
 ### Changed (breaking)

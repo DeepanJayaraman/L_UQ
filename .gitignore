@@ -1,11 +1,16 @@
 .DS_Store
 .idea/
 *.log
+.venv/
 python/.venv/
+__pycache__/
 python/__pycache__/
-python/lmoments/__pycache__/
+python/lmoments_uq/__pycache__/
 python/tests/__pycache__/
 python/*.egg-info/
 python/dist/
 python/build/
 *.mltbx
+
+# Built Octave package; rebuild with octave/build_octave_package.py
+octave/*.tar.gz

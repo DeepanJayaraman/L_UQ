@@ -23,7 +23,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 from scipy import stats
 
-from lmoments_uq import identify_dist, parameter_estimation, pdf_l, cdf_l, js_div
+from lmoments_uq import fit_best, js_div
 
 # MATLAB name -> scipy.stats distribution used for the conventional/MLE fit.
 # (MATLAB's 'ExtremeValue' models the smallest-extreme/min case, opposite of
@@ -55,27 +55,27 @@ def run(seed: int = 7, show: bool = True):
                                 size=100_000, random_state=rng).max()
     x = np.append(x, extreme)
 
-    result = identify_dist(x)
-    fitted_dist = result["best"]
-    L1, L2, T3, T4 = result["L_sample"]
-    print(f"L-moment ratio diagram identified distribution: {fitted_dist}")
-    print(f"Full ranking: {result['ranking']}")
-
-    param_L = parameter_estimation(x, fitted_dist, L1, L2, T3, T4)
-    print(f"L-moment parameter estimate: {param_L}")
+    # fit_best identifies the family and estimates its parameters in one
+    # call, skipping any closer family whose closed-form estimator is
+    # undefined for this sample.
+    fit = fit_best(x)
+    fitted_dist = fit.distribution
+    print(fit.summary())
 
     mle_family = _MLE_DIST[fitted_dist]
     mle_params = mle_family.fit(x)
+    mle_fit = mle_family(*mle_params)
     print(f"Conventional-moment (MLE) parameter estimate: {mle_params}")
 
     lo = max(x.min() - 1, 1e-6)
     hi = x.max() * 1.05
     xgrid = np.linspace(lo, hi, 400)
 
-    pdf_L = pdf_l(xgrid, fitted_dist, param_L)
-    pdf_conv = mle_family.pdf(xgrid, *mle_params)
-    cdf_L = cdf_l(xgrid, fitted_dist, param_L)
-    cdf_conv = mle_family.cdf(xgrid, *mle_params)
+    # The fit evaluates its own distribution.
+    pdf_L = fit.pdf(xgrid)
+    pdf_conv = mle_fit.pdf(xgrid)
+    cdf_L = fit.cdf(xgrid)
+    cdf_conv = mle_fit.cdf(xgrid)
 
     fig, axes = plt.subplots(1, 2, figsize=(11, 4.5))
     axes[0].hist(x, density=True, alpha=0.3, label="Sample histogram")
@@ -100,15 +100,19 @@ def run(seed: int = 7, show: bool = True):
     fig.savefig("demo_example_output.pdf")
     print("Saved figure to demo_example_output.png / .pdf")
 
-    edges = np.linspace(lo, hi, 30)
-    p_emp, _ = np.histogram(x, bins=edges)
-    p_L = np.diff(cdf_l(edges, fitted_dist, param_L))
-    p_conv = np.diff(mle_family.cdf(edges, *mle_params))
-
-    jsd_L = js_div(p_emp + 1e-12, p_L + 1e-12)
-    jsd_conv = js_div(p_emp + 1e-12, p_conv + 1e-12)
+    # Both fits are scored against the sample over the same 29 bins
+    # spanning the plotting range. js_div takes the fit and the raw data
+    # and bins internally, so the two routes are compared on identical
+    # terms without building matching histograms by hand.
+    jsd_L = fit.js_div(x, bins=29, range=(lo, hi))
+    jsd_conv = js_div(mle_fit, x, bins=29, range=(lo, hi))
     print(f"Jensen-Shannon divergence, empirical vs L-moment fit:       {jsd_L:.4f}")
     print(f"Jensen-Shannon divergence, empirical vs conventional fit:   {jsd_conv:.4f}")
+
+    # The KS statistic needs no binning, so it confirms the comparison
+    # above is not an artifact of the chosen bins.
+    print(f"KS statistic, empirical vs L-moment fit:                    "
+          f"{fit.ks_stat(x):.4f}")
 
     if show:
         plt.show()

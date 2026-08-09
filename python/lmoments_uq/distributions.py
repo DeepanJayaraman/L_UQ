@@ -15,6 +15,23 @@ from __future__ import annotations
 import numpy as np
 from scipy import stats
 
+#: Parameter names for each family, positionally matching the arrays
+#: returned by ``parameter_estimation`` and consumed by ``_scipy_dist``
+#: below. Used by ``LMomentFit.parameters_dict`` so callers do not have to
+#: remember each family's array layout.
+PARAMETER_NAMES = {
+    "uniform": ("lower", "upper"),
+    "normal": ("mean", "sd"),
+    "exponential": ("scale",),
+    "gumbel": ("scale", "loc"),
+    "logistic": ("loc", "scale"),
+    "generalized extreme value": ("shape", "scale", "loc"),
+    "generalized pareto": ("shape", "scale", "loc"),
+    "lognormal": ("meanlog", "sdlog", "loc"),
+    "gamma": ("shape", "scale", "loc"),
+    "weibul": ("scale", "shape", "loc"),
+}
+
 
 def _scipy_dist(name: str, parameter):
     p = np.atleast_1d(np.asarray(parameter, dtype=float))

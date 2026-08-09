@@ -1,0 +1,32 @@
+l-uq >> L-Moments Based Uncertainty Quantification
+
+Sample L-moments
+ lmom
+ LegendreShiftPoly
+
+Distribution identification
+ Identify_dist
+ Identify_dist_bootstrap
+
+Parameter estimation
+ Parameter_estimation
+ parameter_identify
+ fit_best
+
+Distribution evaluation
+ PDF_l
+ CDF_l
+ Random_l
+ luq_dist
+
+Goodness of fit
+ JSDiv
+ KLDiv
+ KSStat
+ luq_bin_fit
+
+Utilities
+ luq_percentile
+
+Examples
+ demo_octave

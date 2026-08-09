@@ -1,0 +1,21 @@
+Name: l-uq
+Version: 2.0.0
+Date: 2026-08-07
+Title: L-Moments Based Uncertainty Quantification from Scarce Samples Including Extremes
+Author: Deepan Jayaraman <deepanjayram@gmail.com>, Palaniappan Ramu <palramu@iitm.ac.in>
+Maintainer: Deepan Jayaraman <deepanjayram@gmail.com>
+Description: Distribution identification and parameter estimation from
+ sample L-moments, aimed at small samples that contain genuine extreme
+ observations. Identifies a distribution family by its position on the
+ L-moment ratio diagram, estimates the parameters of nine families in
+ closed form with explicit domain guards and a ranked fallback,
+ quantifies identification uncertainty by bootstrap, and scores fits
+ against data by Jensen-Shannon divergence and the Kolmogorov-Smirnov
+ statistic. This is the GNU Octave packaging of the MATLAB toolbox; the
+ sources are shared, and a Python implementation is distributed
+ separately on PyPI as lmoments-uq.
+Categories: Statistics
+Problems: none known
+Url: https://github.com/DeepanJayaraman/L-UQ
+Depends: octave (>= 6.1.0)
+License: MIT

@@ -8,49 +8,15 @@
 % Name - Distribution name
 % Parameter - Distribution parameter
 
+% Evaluation is delegated to luq_dist, which writes every family out in
+% closed form. Earlier releases called MATLAB's name-dispatching pdf(),
+% which requires the Statistics and Machine Learning Toolbox and has no
+% portable equivalent in GNU Octave; the parameter layouts, location
+% shifts and numerical results are unchanged.
+
 % Copy right
 % ADOPT Lab, IIT Madras, India
 
 function PDF = PDF_l(X,Name,Parameter)
-P = Parameter;
-if strcmp(Name, 'exponential')
-    Name = string(Name);
-%     X = X-P(2);
-    PDF = pdf(Name,X,P(1));
-end
-if any(strcmp(Name,{'uniform','normal','logistic'}))
-    Name = string(Name);
-    PDF = pdf(Name,X,P(1),P(2));
-end
-if any(strcmp(Name,{'generalized extreme value','generalized pareto'}))
-    Name = string(Name);
-    PDF = pdf(Name,X,P(1),P(2),P(3));
-end
-if strcmp(Name,'lognormal')
-    X = X - P(3);
-    PDF = pdf('lognormal',X,P(1),P(2));
-end
-if strcmp(Name,'gumbel')
-    PDF = pdf('generalized extreme value',X,0,P(1),P(2));
-end
-if strcmp(Name,'gamma')
-    X = X-P(3)+eps;
-    PDF = pdf('gamma',X,P(1),P(2));
-    % If start point unknown
-    % Parameter = [Sigma,Mu,Eta,Gamma];
-    %     if P(4)==0
-    %         PDF = pdf('normal',P(2),P(1));
-    %     elseif P(4)<0
-    %         X = P(3)-X;
-    %     PDF = pdf ('gamma',X,P(1),P(2));
-    %     else
-    %         X = X-P(3);
-    %     PDF = pdf ('gamma',X,P(1),P(2));
-    %     end
-end
-if strcmp(Name,'weibul')
-    % Parameter = [A,k,B]: A - scale, k - shape, B - location.
-    % (Replaces a call to an external wblpdf3 that was never bundled
-    % with this repository; the location shift below is equivalent.)
-    PDF = pdf('weibull',X-P(3),P(1),P(2));
-end
+
+PDF = luq_dist('pdf', Name, Parameter, X);

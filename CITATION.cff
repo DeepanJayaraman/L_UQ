@@ -9,8 +9,8 @@ authors:
   - family-names: Ramu
     given-names: Palaniappan
     affiliation: "Department of Engineering Design, Indian Institute of Technology Madras"
-version: 1.2.0
-date-released: 2026-07-11
+version: 2.0.0
+date-released: 2026-08-07
 license: MIT
 repository-code: "https://github.com/DeepanJayaraman/L-UQ"
 keywords:

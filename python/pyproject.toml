@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lmoments-uq"
-version = "1.2.0"
+version = "2.0.0"
 description = "L-moments based uncertainty quantification from scarce samples including extremes"
 readme = "README.md"
 requires-python = ">=3.9"

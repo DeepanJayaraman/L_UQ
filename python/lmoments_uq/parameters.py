@@ -20,6 +20,7 @@ from scipy.special import gamma as gammafn
 
 from .lmoments import lmom
 from .identify import identify_dist
+from .results import CandidateFits, LMomentFit
 
 EULER_GAMMA = 0.5772156649
 
@@ -175,7 +176,7 @@ def parameter_estimation(x, distribution: str, L1: float, L2: float, T3: float, 
     raise ValueError(f"unsupported distribution: {distribution!r}")
 
 
-def fit_best(x) -> dict:
+def fit_best(x) -> LMomentFit:
     """Identify and fit the best *feasible* family for a sample.
 
     Walks the L-moment ratio diagram ranking from `identify_dist` and
@@ -187,32 +188,49 @@ def fit_best(x) -> dict:
     sampling noise alone, so callers using automatic identification
     should prefer this over identify_dist + parameter_estimation.
 
-    Returns {'distribution', 'parameters', 'distance', 'rank',
-    'L_sample', 'ranking', 'skipped'} where 'skipped' lists
-    (family, reason) pairs for any higher-ranked families that failed.
+    Returns an :class:`~lmoments_uq.results.LMomentFit`, which carries the
+    fitted family and parameters and can evaluate the fitted distribution,
+    score itself against data, summarize itself and plot itself::
+
+        fit = fit_best(x_scarce)
+        fit.distribution            # fitted family
+        fit.parameters_dict         # named parameter estimates
+        fit.sf(threshold)           # exceedance probability
+        fit.js_div(x_reference)     # goodness of fit, no manual binning
+        fit.ks_stat(x_reference)
+        print(fit.summary())
+        fit.plot(x_reference)
+
+    ``fit.rank`` is 0 when the closest family on the ratio diagram was
+    fitted, and positive when closer families were skipped; ``fit.skipped``
+    lists ``(family, reason)`` for each of them.
+
+    Legacy mapping access -- ``fit["distribution"]``, ``fit["parameters"]``
+    and the other keys returned by the 1.x dict API -- still works.
     """
     x = np.asarray(x, dtype=float)
     x = x[~np.isnan(x)]
 
     result = identify_dist(x)
-    L1, L2, T3, T4 = result["L_sample"]
+    L1, L2, T3, T4 = result.l_moments
 
     skipped = []
-    for rank, (name, distance) in enumerate(result["ranking"]):
+    for rank, (name, distance) in enumerate(result.ranking):
         try:
             params = parameter_estimation(x, name, L1, L2, T3, T4)
         except ParameterEstimationError as exc:
             skipped.append((name, str(exc)))
             continue
-        return {
-            "distribution": name,
-            "parameters": params,
-            "distance": distance,
-            "rank": rank,
-            "L_sample": result["L_sample"],
-            "ranking": result["ranking"],
-            "skipped": skipped,
-        }
+        return LMomentFit(
+            distribution=name,
+            parameters=params,
+            distance=distance,
+            rank=rank,
+            l_moments=result.l_moments,
+            ranking=result.ranking,
+            skipped=skipped,
+            data=x,
+        )
 
     raise ParameterEstimationError(
         "no supported family's closed-form estimator is valid for this "
@@ -221,7 +239,7 @@ def fit_best(x) -> dict:
         + "; ".join(f"{n}: {r}" for n, r in skipped))
 
 
-def parameter_identify(x, k: int = 1) -> dict:
+def parameter_identify(x, k: int = 1, strict: bool = False) -> CandidateFits:
     """Identify the top-`k` candidate distributions and estimate each one's
     parameters from the sample's L-moments.
 
@@ -229,21 +247,58 @@ def parameter_identify(x, k: int = 1) -> dict:
     breaks unless Identify_dist returns exactly K candidates -- it never
     returns more than one), this version genuinely ranks all 9 supported
     families and estimates parameters for the requested top `k`.
+
+    Returns a :class:`~lmoments_uq.results.CandidateFits`. Each candidate
+    is a full :class:`~lmoments_uq.results.LMomentFit`, so competing
+    families can be compared on the same footing -- for instance by
+    scoring each against a reference sample::
+
+        cands = parameter_identify(x_scarce, k=3)
+        [(f.distribution, f.js_div(x_full)) for f in cands.fits]
+
+    Candidates whose closed-form estimator is undefined for this sample
+    are skipped and recorded in ``result.skipped``, and the search
+    continues down the ranking until `k` feasible fits are found -- the
+    same guarded walk `fit_best` performs, so
+    ``parameter_identify(x, 1).best`` agrees with ``fit_best(x)``. Fewer
+    than `k` fits are returned only when the ranking is exhausted.
+
+    Parameters
+    ----------
+    k : int
+        Number of feasible candidate families to fit.
+    strict : bool
+        When True, an out-of-domain candidate raises
+        ParameterEstimationError instead of being skipped (the behaviour
+        of releases before 2.0).
     """
     x = np.asarray(x, dtype=float)
     x = x[~np.isnan(x)]
 
     result = identify_dist(x)
-    L1, L2, T3, T4 = result["L_sample"]
+    L1, L2, T3, T4 = result.l_moments
 
-    top_k = result["ranking"][:k]
-    fits = []
-    for name, distance in top_k:
-        params = parameter_estimation(x, name, L1, L2, T3, T4)
-        fits.append({"distribution": name, "distance": distance, "parameters": params})
+    fits, skipped = [], []
+    for rank, (name, distance) in enumerate(result.ranking):
+        if len(fits) >= k:
+            break
+        try:
+            params = parameter_estimation(x, name, L1, L2, T3, T4)
+        except ParameterEstimationError as exc:
+            if strict:
+                raise
+            skipped.append((name, str(exc)))
+            continue
+        fits.append(LMomentFit(
+            distribution=name,
+            parameters=params,
+            distance=distance,
+            rank=rank,
+            l_moments=result.l_moments,
+            ranking=result.ranking,
+            skipped=list(skipped),
+            data=x,
+        ))
 
-    return {
-        "fits": fits,
-        "L_sample": result["L_sample"],
-        "ranking": result["ranking"],
-    }
+    return CandidateFits(fits=fits, l_moments=result.l_moments,
+                         ranking=result.ranking, skipped=skipped)

@@ -93,7 +93,10 @@ if Position == 7    % Generalized pareto
     
 end
 if Position == 8    % Lognormal distribution
-    Z = sqrt(8/3)*norminv((1+T3)/2);
+    % sqrt(2)*erfinv(2*p-1) is the standard normal quantile function.
+    % erfinv is core to both MATLAB and Octave, whereas norminv needs the
+    % Statistics toolbox / statistics package.
+    Z = sqrt(8/3)*sqrt(2)*erfinv(2*((1+T3)/2)-1);
     Sigma = 0.999281*Z-0.006118*Z^3+0.000127*Z^5;
     Mu = log(L2/erf(Sigma/2))-Sigma^2/2;
     Eta = L1-exp(Mu+Sigma^2/2);
